@@ -13,4 +13,4 @@ vouquet 公開仕様
 ![Request](./media/vouquet_request.png)
 
 * 利益発生概要動作
-![Maintenance](./media/vouquet_maintenance.png
+![Maintenance](./media/vouquet_maintenance.png)
