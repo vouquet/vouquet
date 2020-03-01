@@ -1,1 +1,5 @@
 *.swp
+src/go/bin
+src/go/pkg
+src/go/src/vouquet/vendor
+src/go/src/vouquet/Gopkg.lock
