@@ -8,8 +8,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type Planter struct {}
-
 type Registry struct {
 	db  *sql.DB
 
