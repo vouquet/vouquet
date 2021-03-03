@@ -23,11 +23,12 @@
 #   non-go = false
 #   go-tests = true
 #   unused-packages = true
-
-
 [[constraint]]
   branch = "master"
-  name = "github.com/hinoshiba/go-gmo-coin"
+  name = "github.com/vouquet/go-gmo-coin"
+[[constraint]]
+  branch = "master"
+  name = "github.com/vouquet/shop"
 
 [prune]
   go-tests = true
