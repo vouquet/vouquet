@@ -1,0 +1,19 @@
+[Unit]
+Description=vouquet registrar
+After=syslog.target
+After=network.target
+
+[Service]
+LimitMEMLOCK=infinity
+LimitNOFILE=65535
+Type=simple
+User=vouquet
+Group=vouquet
+WorkingDirectory=/var/service/vouquet
+ExecStart=/var/service/vouquet/bin/vqt_registrar -c /var/service/vouquet/etc/vouquet.conf
+Restart=always
+StandardOutput=append:/var/log/vqt_registrar.log
+StandardError=append:/var/log/vqt_registrar-err.log
+
+[Install]
+WantedBy=multi-user.target
