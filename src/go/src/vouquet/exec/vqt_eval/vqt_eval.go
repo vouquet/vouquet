@@ -4,11 +4,13 @@ import (
 	"os"
 	"fmt"
 	"flag"
+	"time"
 	"context"
 )
 
 import (
 	"vouquet/soil"
+	"vouquet/seed"
 )
 
 var (
@@ -35,15 +37,20 @@ func eval() error {
 	}
 	defer r.Close()
 
-	p := soil.NewTestPlanter("BTC")
-	p.SetSeed("BUY", 0.01, 1000)
-	sps, _ := p.ShowSproutList()
-	for _, sp := range sps {
-		p.Harvest(sp, 2000)
+	p := soil.NewTestPlanter(seed.SYMBOL_BTC)
+
+	asks, bids, err := r.GetStatusPerMinute(soil.SOIL_GMO, seed.SYMBOL_BTC, time.Now().Add(-60 * time.Minute), time.Now())
+	if err != nil {
+		return err
+	}
+	for i, ask := range asks {
+		p.SetSeed(soil.TYPE_BUY, 0.01, ask.Close())
+		sps, _ := p.ShowSproutList()
+		for _, sp := range sps {
+			p.Harvest(sp, bids[i].Close())
+		}
 	}
 	log.WriteMsg("yield : %f", p.Yield())
-	sps, _ = p.ShowSproutList()
-	log.WriteMsg("last sps : %f", sps)
 
 	return nil
 }

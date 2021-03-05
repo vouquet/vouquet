@@ -13,9 +13,9 @@ import (
 
 type Planter interface {
 	Symbol() string
-	SetSeed(string, float64, float64) error
+	SetSeed(string, float64, float64) error //TODO: not use rate, only stream order.
 	ShowSproutList() ([]*Sprout, error)
-	Harvest(*Sprout, float64) error
+	Harvest(*Sprout, float64) error //TODO: not use rate, only stream order.
 	Yield() float64
 }
 

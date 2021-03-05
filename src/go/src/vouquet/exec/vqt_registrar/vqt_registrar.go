@@ -60,7 +60,7 @@ func registrar() error {
 						mtx.Lock()
 						defer mtx.Unlock()
 
-						ss, err := t.Status()
+						ss, err := t.State()
 						if err != nil {
 							log.WriteErr("%s", err)
 							return
