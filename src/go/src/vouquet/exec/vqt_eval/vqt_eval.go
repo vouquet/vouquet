@@ -19,6 +19,10 @@ import (
 	"github.com/vouquet/florist"
 )
 
+const (
+	TEST_SIZE = 0.001
+)
+
 var (
 	Cpath    string
 	Detail   bool
@@ -61,7 +65,7 @@ func eval() error {
 	fls := make(map[string]florist.Florist)
 	chan_list := make(map[string]chan *florist.StatusGroup)
 	for _, name := range florist.MEMBERS {
-		fl, err := florist.NewFlorist(name, p, asks, bids)
+		fl, err := florist.NewFlorist(name, p, asks, bids, log)
 		if err != nil {
 			return err
 		}
@@ -97,13 +101,14 @@ func eval() error {
 	wg := new(sync.WaitGroup)
 	for name, fl := range fls {
 		wg.Add(1)
-		go func() {
+
+		go func(name string, fl florist.Florist) {
 			defer wg.Done()
 
-			if err := fl.Run(ctx, chan_list[name]); err != nil {
+			if err := fl.Run(ctx, TEST_SIZE, chan_list[name]); err != nil {
 				log.WriteErr("cannot run %s, %s", name, err)
 			}
-		}()
+		}(name, fl)
 	}
 	wg.Wait()
 
