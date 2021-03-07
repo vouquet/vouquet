@@ -55,7 +55,6 @@ func eval() error {
 		return err
 	}
 	defer r.Close()
-	p := soil.NewTestPlanter(seed.SYMBOL_BTC_REVERAGE)
 
 	asks, bids, err := r.GetStatusPerMinute(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, before_data, start)
 	if err != nil {
@@ -65,6 +64,8 @@ func eval() error {
 	fls := make(map[string]florist.Florist)
 	chan_list := make(map[string]chan *florist.StatusGroup)
 	for _, name := range florist.MEMBERS {
+
+		p := soil.NewTestPlanter(name, seed.SYMBOL_BTC_REVERAGE, log)
 		fl, err := florist.NewFlorist(name, p, asks, bids, log)
 		if err != nil {
 			return err
@@ -117,7 +118,7 @@ func eval() error {
 	fmt.Printf("test days: %v ('%s' -> '%s')\n", TestDays, start, now)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	for name, fl := range fls {
-		fmt.Printf("%s : win: %f\n", name, fl.Yield())
+		fmt.Printf("%s : win: %f, order count: %v\n", name, fl.Yield(), fl.HarvestCnt())
 	}
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 

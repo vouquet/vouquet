@@ -16,6 +16,7 @@ type Planter interface {
 	SetSeed(string, float64, float64) error //TODO: not use rate, only stream order.
 	ShowSproutList() ([]*Sprout, error)
 	Harvest(*Sprout, float64) error //TODO: not use rate, only stream order.
+	HarvestCnt() int64
 	Yield() float64
 }
 
@@ -47,6 +48,10 @@ func (self *Flowerpot) ShowSproutList() ([]*Sprout, error) {
 
 func (self *Flowerpot) Harvest(sp *Sprout, price float64) error {
 	return nil
+}
+
+func (self *Flowerpot) HarvestCnt() int64 {
+	return 0
 }
 
 func (self *Flowerpot) Yield() float64 {
@@ -139,19 +144,23 @@ func (self *testPosition) OrderType() string {
 }
 
 type TestPlanter struct {
+	name       string
 	symbol     string
 
 	sp_list    []*Sprout
 	yield_cnt  float64
+	hvst_cnt   int64
 
-
+	log     logger
 	mtx     *sync.Mutex
 }
 
-func NewTestPlanter(symbol string) *TestPlanter {
+func NewTestPlanter(name string, symbol string, log logger) *TestPlanter {
 	return &TestPlanter{
+		name: name,
 		symbol: symbol,
 		sp_list: []*Sprout{},
+		log: log,
 		mtx: new(sync.Mutex),
 	}
 }
@@ -189,16 +198,23 @@ func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
 	defer self.unlock()
 
 	var yield float64
+	var in_val float64
+	var out_val float64
 	switch sp.OrderType() {
 	case shop.ORDER_TYPE_BUY:
 		yield = (sp.Size() * price) - (sp.Size() * sp.Price())
+		in_val = price
+		out_val = sp.Price()
 	case shop.ORDER_TYPE_SELL:
 		yield = (sp.Size() * sp.Price()) - (sp.Size() * price)
+		in_val = sp.Price()
+		out_val = price
 	default:
 		return fmt.Errorf("undefined type of order: '%s'", sp.OrderType())
 	}
 
 	self.yield_cnt += yield
+	self.hvst_cnt ++
 
 	sp_list := []*Sprout{}
 	for i, bsp := range self.sp_list {
@@ -210,7 +226,17 @@ func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
 		break
 	}
 	self.sp_list = sp_list
+
+	self.log.WriteMsg("%s.Harvested(%s) orderIn: %f -> orderOut: %f, win: %f",
+							self.name, sp.OrderType(), in_val, out_val, yield)
 	return nil
+}
+
+func (self *TestPlanter) HarvestCnt() int64 {
+	self.lock()
+	defer self.unlock()
+
+	return self.hvst_cnt
 }
 
 func (self *TestPlanter) Yield() float64 {
