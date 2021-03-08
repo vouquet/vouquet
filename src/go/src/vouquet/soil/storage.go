@@ -10,54 +10,23 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type Status struct {
-	open   float64
-	high   float64
-	low    float64
-	close  float64
+type State struct {
+	ask  float64
+	bid  float64
 
-	date   time.Time
+	date time.Time
 }
 
-func (self *Status) Open() float64 {
-	return self.open
+func (self *State) Ask() float64 {
+	return self.ask
 }
 
-func (self *Status) High() float64 {
-	return self.high
+func (self *State) Bid() float64 {
+	return self.bid
 }
 
-func (self *Status) Low() float64 {
-	return self.low
-}
-
-func (self *Status) Close() float64 {
-	return self.close
-}
-
-func (self *Status) Date() time.Time {
+func (self *State) Date() time.Time {
 	return self.date
-}
-
-func newStatus(t time.Time, val float64) *Status {
-	return &Status{
-		open:val,
-		high: val,
-		low: val,
-		close: val,
-
-		date:t,
-	}
-}
-
-func (self *Status) update(val float64) {
-	self.close = val
-	if self.low > val {
-		self.low = val
-	}
-	if self.high < val {
-		self.high = val
-	}
 }
 
 type Registry struct {
@@ -110,7 +79,7 @@ func (self *Registry) Close() error {
 	return self.db.Close()
 }
 
-func (self *Registry) Record(ss *State) error {
+func (self *Registry) Record(ss *Status) error {
 	self.lock()
 	defer self.unlock()
 
@@ -123,11 +92,11 @@ func (self *Registry) Record(ss *State) error {
 	return nil
 }
 
-func (self *Registry) GetStatusPerMinute(tname string, symbol string, st time.Time, et time.Time) ([]*Status, []*Status, error) {
+func (self *Registry) GetStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {
 	self.lock()
 	defer self.unlock()
 
-	return self.do_sql_getStatusPerMinute(tname, symbol, st, et)
+	return self.do_sql_getStatus(tname, symbol, st, et)
 }
 
 func (self *Registry) checktbl() error {
@@ -184,19 +153,18 @@ func (self *Registry) do_sql_updateSymbol(tname string, symbol string, ask float
 	return nil
 }
 
-func (self *Registry) do_sql_getStatusPerMinute(tname string, symbol string, st time.Time, et time.Time) ([]*Status, []*Status, error) {
+func (self *Registry) do_sql_getStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {
 	base := "SELECT time, ask, bid FROM %s WHERE symbol = '%s' AND time BETWEEN '%s:00' AND '%s:59';"
 	t_fmt := "2006-01-02 15:04"
 	qstr := fmt.Sprintf(base, tname, symbol, st.Format(t_fmt), et.Format(t_fmt))
 
 	rows, err := self.db.QueryContext(self.ctx, qstr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("do_sql_getStatus: query: '%s', err: '%s'", qstr, err)
+		return nil, fmt.Errorf("do_sql_getStatus: query: '%s', err: '%s'", qstr, err)
 	}
 	defer rows.Close()
 
-	ask_buf := make(map[int]*Status)
-	bid_buf := make(map[int]*Status)
+	status := []*State{}
 	for rows.Next() {
 		var t time.Time
 		var ask float64
@@ -205,40 +173,13 @@ func (self *Registry) do_sql_getStatusPerMinute(tname string, symbol string, st 
 			self.log.WriteErr("Registry.do_sql_getStatus: cannot convert sqldata. :'%s'", err)
 			continue
 		}
-		key_t := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, t.Location())
-		key_int := int(key_t.Unix())
 
-		as, ok := ask_buf[key_int]
-		if !ok {
-			as = newStatus(key_t, ask)
-		} else {
-			as.update(ask)
-		}
-		ask_buf[key_int] = as
+		state := &State{ask: ask, bid: bid, date: t}
+		status = append(status, state)
 
-		bs, ok := bid_buf[key_int]
-		if !ok {
-			bs = newStatus(key_t, bid)
-		} else {
-			bs.update(bid)
-		}
-		bid_buf[key_int] = bs
 	}
-
-	both_keylist := []int{}
-	for k, _ := range ask_buf {
-		both_keylist = append(both_keylist, k)
-	}
-	sort.SliceStable(both_keylist, func(i, j int) bool { return both_keylist[i] < both_keylist[j] })
-
-	ask_list := []*Status{}
-	bid_list := []*Status{}
-	for _, k := range both_keylist {
-		ask_list = append(ask_list, ask_buf[k])
-		bid_list = append(bid_list, bid_buf[k])
-	}
-
-	return ask_list, bid_list, nil
+	sort.SliceStable(status, func(i, j int) bool { return status[i].date.Before(status[j].date) })
+	return status, nil
 }
 
 func (self *Registry) do_sql_createTable(name string) error {

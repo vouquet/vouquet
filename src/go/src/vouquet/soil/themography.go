@@ -42,7 +42,7 @@ type Themography struct {
 	mtx   *sync.Mutex
 }
 
-func (self *Themography) State() (*State, error) {
+func (self *Themography) Status() (*Status, error) {
 	self.mtx.Lock()
 	defer self.mtx.Unlock()
 
@@ -50,7 +50,7 @@ func (self *Themography) State() (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &State{name:self.name, rates:rates}, nil
+	return &Status{name:self.name, rates:rates}, nil
 }
 
 func (self *Themography) Release() error {
@@ -58,7 +58,7 @@ func (self *Themography) Release() error {
 	return self.shop.Close()
 }
 
-type State struct {
+type Status struct {
 	name  string
 	rates map[string]shop.Rate
 }

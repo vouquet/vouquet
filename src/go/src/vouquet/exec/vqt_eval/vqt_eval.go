@@ -56,46 +56,40 @@ func eval() error {
 	}
 	defer r.Close()
 
-	asks, bids, err := r.GetStatusPerMinute(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, before_data, start)
+	status, err := r.GetStatus(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, before_data, start)
 	if err != nil {
 		return err
 	}
 
 	fls := make(map[string]florist.Florist)
-	chan_list := make(map[string]chan *florist.StatusGroup)
+	chan_list := make(map[string]chan *soil.State)
 	for _, name := range florist.MEMBERS {
 
 		p := soil.NewTestPlanter(name, seed.SYMBOL_BTC_REVERAGE, log)
-		fl, err := florist.NewFlorist(name, p, asks, bids, log)
+		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
 		}
 
 		fls[name] = fl
-		chan_list[name] = make(chan *florist.StatusGroup)
+		chan_list[name] = make(chan *soil.State)
 	}
 
 	go func() {
-		t_asks, t_bids, err := r.GetStatusPerMinute(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, start, now)
+		t_status, err := r.GetStatus(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, start, now)
 		if err != nil {
 			return
 		}
-		log.WriteMsg("read size: %v", len(t_asks))
+		log.WriteMsg("read size: %v", len(t_status))
 
-		for i, ask := range t_asks {
-			sg, err := florist.NewStatusGroup(ask, t_bids[i])
-			if err != nil {
-				log.WriteErr("cannot convert status group. '%s'", err)
-				continue
-			}
-
-			for _, sg_chan := range chan_list {
-				sg_chan <- sg
+		for _, t_state := range t_status {
+			for _, s_chan := range chan_list {
+				s_chan <- t_state
 			}
 		}
 
-		for _, sg_chan := range chan_list {
-			close(sg_chan)
+		for _, s_chan := range chan_list {
+			close(s_chan)
 		}
 	}()
 
