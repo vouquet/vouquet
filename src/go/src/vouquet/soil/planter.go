@@ -72,6 +72,10 @@ func (self *Sprout) CreateTime() time.Time {
 	return self.date
 }
 
+func (self *Sprout) HasPosition() bool {
+	return self.pos != nil
+}
+
 func (self *Sprout) Symbol() string {
 	if self.pos == nil {
 		return ""
