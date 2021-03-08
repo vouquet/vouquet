@@ -1,6 +1,9 @@
 package soil
 
 const (
+	TYPE_SELL string = "SELL"
+	TYPE_BUY  string = "BUY"
+
 	SOIL_GMO string = "coinzcom"
 )
 

@@ -2,13 +2,32 @@ package soil
 
 import (
 	"fmt"
+	"sort"
 	"sync"
+	"time"
 	"context"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type Planter struct {}
+type State struct {
+	ask  float64
+	bid  float64
+
+	date time.Time
+}
+
+func (self *State) Ask() float64 {
+	return self.ask
+}
+
+func (self *State) Bid() float64 {
+	return self.bid
+}
+
+func (self *State) Date() time.Time {
+	return self.date
+}
 
 type Registry struct {
 	db  *sql.DB
@@ -34,7 +53,8 @@ func OpenRegistry(c_path string, ctx context.Context, log logger) (*Registry, er
 	}
 	c_ctx, cancel := context.WithCancel(ctx)
 
-	db, err := sql.Open("mysql", cfg.sqlcred())
+	opt := "?parseTime=true&loc=Local"
+	db, err := sql.Open("mysql", cfg.sqlcred() + opt)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +69,34 @@ func OpenRegistry(c_path string, ctx context.Context, log logger) (*Registry, er
 		return nil, err
 	}
 	return self, nil
+}
+
+func (self *Registry) Close() error {
+	self.lock()
+	defer self.unlock()
+
+	self.cancel()
+	return self.db.Close()
+}
+
+func (self *Registry) Record(ss *Status) error {
+	self.lock()
+	defer self.unlock()
+
+	for symbol, rate := range ss.rates {
+		err := self.do_sql_updateSymbol(ss.name, symbol, rate.Ask(), rate.Bid())
+		if err != nil {
+			self.log.WriteErr("Registry.Record: %s", err)
+		}
+	}
+	return nil
+}
+
+func (self *Registry) GetStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {
+	self.lock()
+	defer self.unlock()
+
+	return self.do_sql_getStatus(tname, symbol, st, et)
 }
 
 func (self *Registry) checktbl() error {
@@ -105,6 +153,35 @@ func (self *Registry) do_sql_updateSymbol(tname string, symbol string, ask float
 	return nil
 }
 
+func (self *Registry) do_sql_getStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {
+	base := "SELECT time, ask, bid FROM %s WHERE symbol = '%s' AND time BETWEEN '%s:00' AND '%s:59';"
+	t_fmt := "2006-01-02 15:04"
+	qstr := fmt.Sprintf(base, tname, symbol, st.Format(t_fmt), et.Format(t_fmt))
+
+	rows, err := self.db.QueryContext(self.ctx, qstr)
+	if err != nil {
+		return nil, fmt.Errorf("do_sql_getStatus: query: '%s', err: '%s'", qstr, err)
+	}
+	defer rows.Close()
+
+	status := []*State{}
+	for rows.Next() {
+		var t time.Time
+		var ask float64
+		var bid float64
+		if err := rows.Scan(&t, &ask, &bid); err != nil {
+			self.log.WriteErr("Registry.do_sql_getStatus: cannot convert sqldata. :'%s'", err)
+			continue
+		}
+
+		state := &State{ask: ask, bid: bid, date: t}
+		status = append(status, state)
+
+	}
+	sort.SliceStable(status, func(i, j int) bool { return status[i].date.Before(status[j].date) })
+	return status, nil
+}
+
 func (self *Registry) do_sql_createTable(name string) error {
 	base := `CREATE TABLE %s (
 symbol VARCHAR(11) NOT NULL,
@@ -116,27 +193,6 @@ PRIMARY KEY(symbol, time));`
 	qstr := fmt.Sprintf(base, name)
 	if _, err := self.db.ExecContext(self.ctx, qstr); err != nil {
 		return fmt.Errorf("do_sql_createTable: query: '%s', err: '%s'", qstr, err)
-	}
-	return nil
-}
-
-func (self *Registry) Close() error {
-	self.lock()
-	defer self.unlock()
-
-	self.cancel()
-	return self.db.Close()
-}
-
-func (self *Registry) Record(ss *Status) error {
-	self.lock()
-	defer self.unlock()
-
-	for symbol, rate := range ss.rates {
-		err := self.do_sql_updateSymbol(ss.name, symbol, rate.Ask(), rate.Bid())
-		if err != nil {
-			self.log.WriteErr("Registry.Record: %s", err)
-		}
 	}
 	return nil
 }
