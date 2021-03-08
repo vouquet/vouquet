@@ -117,7 +117,13 @@ func eval() error {
 	fmt.Printf("vqt_eval report\n")
 	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
-	for name, fl := range fls {
+	for _, name := range florist.MEMBERS {
+		fl, ok := fls[name]
+		if !ok {
+			fmt.Printf("%s : was not run test.", name)
+			continue
+		}
+
 		fmt.Printf("%s : win: %f, order count: %v, win average: %v\n",
 				name, fl.Yield(), fl.HarvestCnt(), fl.Yield() / float64(fl.HarvestCnt()))
 	}
