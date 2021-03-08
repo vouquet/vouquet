@@ -75,12 +75,18 @@ func eval() error {
 		chan_list[name] = make(chan *soil.State)
 	}
 
+	var head time.Time
+	var tail time.Time
+
 	go func() {
 		t_status, err := r.GetStatus(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, start, now)
 		if err != nil {
 			return
 		}
 		log.WriteMsg("read size: %v", len(t_status))
+
+		head = t_status[0].Date()
+		tail = t_status[len(t_status)-1].Date()
 
 		for _, t_state := range t_status {
 			for _, s_chan := range chan_list {
@@ -109,10 +115,11 @@ func eval() error {
 
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	fmt.Printf("vqt_eval report\n")
-	fmt.Printf("test days: %v ('%s' -> '%s')\n", TestDays, start, now)
+	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	for name, fl := range fls {
-		fmt.Printf("%s : win: %f, order count: %v\n", name, fl.Yield(), fl.HarvestCnt())
+		fmt.Printf("%s : win: %f, order count: %v, win average: %v\n",
+				name, fl.Yield(), fl.HarvestCnt(), fl.Yield() / float64(fl.HarvestCnt()))
 	}
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 
