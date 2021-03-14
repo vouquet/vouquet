@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	TEST_SIZE = 0.001
+	TEST_SIZE = 0.01
 )
 
 var (
