@@ -6,5 +6,10 @@ vouquet
 
 ---
 
-* [公開仕様](./doc/README.md)
-* [内部仕様](https://github.com/hinoshiba/vouquet_internal)
+* 2020/03/01時点の大枠設計思想
+![BasicDesign](./media/Vouquet_Basic_Design.png)
+
+---
+* 各種リンク
+	* [公開仕様](./public/README.md)
+	* [非公開仕様や運用手順リンク(開発メンバ用)](https://github.com/vouquet/private_docs)
