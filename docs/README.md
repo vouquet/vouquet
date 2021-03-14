@@ -7,7 +7,7 @@ vouquet
 ---
 
 * 2020/03/01時点の大枠設計思想
-![BasicDesign](./media/Vouquet_Basic_Design.png)
+![BasicDesign](./public/media/Vouquet_Basic_Design.png)
 
 ---
 * 各種リンク
