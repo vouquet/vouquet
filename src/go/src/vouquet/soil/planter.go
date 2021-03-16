@@ -201,18 +201,14 @@ func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
 	self.lock()
 	defer self.unlock()
 
+	in_val := sp.Price()
+	out_val := price
 	var yield float64
-	var in_val float64
-	var out_val float64
 	switch sp.OrderType() {
 	case shop.ORDER_TYPE_BUY:
-		yield = (sp.Size() * price) - (sp.Size() * sp.Price())
-		in_val = price
-		out_val = sp.Price()
+		yield = (sp.Size() * out_val) - (sp.Size() * in_val)
 	case shop.ORDER_TYPE_SELL:
-		yield = (sp.Size() * sp.Price()) - (sp.Size() * price)
-		in_val = sp.Price()
-		out_val = price
+		yield = (sp.Size() * in_val) - (sp.Size() * out_val)
 	default:
 		return fmt.Errorf("undefined type of order: '%s'", sp.OrderType())
 	}
