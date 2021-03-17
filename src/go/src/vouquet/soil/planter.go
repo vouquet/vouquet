@@ -45,7 +45,7 @@ func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Co
 	if err != nil {
 		return nil, err
 	}
-	s, err := openShop(soil_name, c)
+	s, err := openShop(soil_name, c, c_ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +59,10 @@ func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Co
 
 		ctx: ctx,
 		cancel: cancel,
-		mtx: new(sync.Mutex)
+		mtx: new(sync.Mutex),
 	}
 
-	_, err := self.updateSproutList()
-	if err != nil {
+	if err := self.updateSproutList(); err != nil {
 		return nil, err
 	}
 	return self, nil
@@ -74,17 +73,91 @@ func (self *Flowerpot) Symbol() string {
 }
 
 func (self *Flowerpot) SetSeed(o_type string, size float64, price float64) error {
+	self.lock()
+	defer self.unlock()
+
 	return nil
 }
 
 func (self *Flowerpot) ShowSproutList() ([]*Sprout, error) {
-	return nil, nil
+	self.lock()
+	defer self.unlock()
+
+	if err := self.updateSproutList(); err != nil {
+		return nil, err
+	}
+	return self.getSproutList()
+}
+
+func (self *Flowerpot) getSproutList() ([]*Sprout, error) {
+	if self.sp_list == nil {
+		return nil, fmt.Errorf("sprout list is nil.")
+	}
+
+	ret_spl := make([]*Sprout, len(self.sp_list))
+	copy(ret_spl, self.sp_list)
+	return ret_spl, nil
 }
 
 func (self *Flowerpot) updateSproutList() error {
+	has_pos_idx := make(map[string]interface{})
+	no_pos := []*Sprout{}
+	for _, sp := range self.sp_list {
+		if sp.posId() == "" {
+			no_pos = append(no_pos, sp)
+			continue
+		}
+		has_pos_idx[sp.posId()] = nil
+	}
+
+	poss, err := self.soil.GetPositions(self.symbol)
+	if err != nil {
+		return err
+	}
+	for _, pos := range poss {
+		if _, ok := has_pos_idx[pos.Id()]; ok {
+			continue
+		}
+
+		mapped := false
+		for _, sp := range no_pos {
+			if sp.pos != nil {
+				continue
+			}
+
+			if sp.o_type != pos.OrderType() {
+				continue
+			}
+
+			upper := sp.price * 1.02
+			lower := sp.price * 0.98
+			if pos.Price() > upper || lower > pos.Price() {
+				continue
+			}
+
+			sp.pos = pos
+			mapped = true
+		}
+
+		if mapped {
+			continue
+		}
+		sp := &Sprout{
+			date: time.Now(),//TODO: want to set datetime where shop.position.
+			price: pos.Price(),
+			size: pos.Size(),
+			o_type: pos.OrderType(),
+			pos: pos,
+		}
+		self.sp_list = append(self.sp_list, sp)
+	}
+
+	return nil
 }
 
 func (self *Flowerpot) Harvest(sp *Sprout, price float64) error {
+	self.lock()
+	defer self.unlock()
 	return nil
 }
 
@@ -164,6 +237,13 @@ func (self *Sprout) equal(sp *Sprout) bool {
 		return false
 	}
 	return self.pos.Id() == sp.pos.Id()
+}
+
+func (self *Sprout) posId() string {
+	if self.pos == nil {
+		return ""
+	}
+	return self.pos.Id()
 }
 
 type testPosition struct {

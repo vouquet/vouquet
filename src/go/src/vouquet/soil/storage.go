@@ -84,7 +84,7 @@ func (self *Registry) Record(ss *Status) error {
 	defer self.unlock()
 
 	for symbol, rate := range ss.rates {
-		err := self.do_sql_updateSymbol(ss.name, symbol, rate.Ask(), rate.Bid())
+		err := self.do_sql_updateSymbol(ss.soil_name, symbol, rate.Ask(), rate.Bid())
 		if err != nil {
 			self.log.WriteErr("Registry.Record: %s", err)
 		}

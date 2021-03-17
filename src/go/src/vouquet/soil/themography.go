@@ -1,32 +1,30 @@
 package soil
 
 import (
-	"fmt"
 	"sync"
 	"context"
 )
 
 import (
 	"github.com/vouquet/shop"
-	"github.com/vouquet/go-gmo-coin/gomocoin"
 )
 
-func NewThemograpy(name string, ctx context.Context) (*Themography, error) {
+func NewThemograpy(soil_name string, ctx context.Context) (*Themography, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	c_ctx, cancel := context.WithCancel(ctx)
 
-	s, err := openShop(soil_name, nil)
+	s, err := openShop(soil_name, nil, c_ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Themography{name:name, shop:s, ctx:c_ctx, cancel:cancel, mtx:new(sync.Mutex)}, nil
+	return &Themography{soil_name:soil_name, shop:s, ctx:c_ctx, cancel:cancel, mtx:new(sync.Mutex)}, nil
 }
 
 type Themography struct {
-	name  string
+	soil_name  string
 	shop  shop.Shop
 
 	ctx    context.Context
@@ -42,7 +40,7 @@ func (self *Themography) Status() (*Status, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Status{name:self.name, rates:rates}, nil
+	return &Status{soil_name:self.soil_name, rates:rates}, nil
 }
 
 func (self *Themography) Release() error {
@@ -51,6 +49,6 @@ func (self *Themography) Release() error {
 }
 
 type Status struct {
-	name  string
+	soil_name  string
 	rates map[string]shop.Rate
 }
