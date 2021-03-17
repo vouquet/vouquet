@@ -65,7 +65,7 @@ func eval() error {
 	chan_list := make(map[string]chan *soil.State)
 	for _, name := range florist.MEMBERS {
 
-		p := soil.NewTestPlanter(name, seed.SYMBOL_BTC_REVERAGE, log)
+		p := soil.NewTestPlanter(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, log)
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err

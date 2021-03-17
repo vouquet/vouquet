@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"flag"
+	"sync"
 	"time"
 	"context"
 	"strconv"
@@ -67,28 +68,36 @@ func florister() error {
 
 	st_ch := make(chan *soil.State)
 	go func() {
-		t := time.NewTicker(3 * time.Second)
+		defer close(st_ch)
+
+		mtx := new(sync.Mutex)
+		t := time.NewTicker(time.Second)
+		var before time.Time
 		for {
 			select {
 			case <- ctx.Done():
 				return
-			case now := <-t.C:
+			case <-t.C:
 				go func() {
-					now_head := now.Add(-999 * time.Millisecond)
-					status, err := r.GetStatus(Soil, Symbol, now_head, now)
+					mtx.Lock()
+					defer mtx.Unlock()
+
+					state, err := r.GetLastState(Soil, Symbol)
 					if err != nil {
 						log.WriteErr("Cannot get status: '%s'", err)
 						return
 					}
-					if len(status) != 1 {
-						log.WriteErr("The response amount is not appropriate. %v", len(status))
+					if state.Date().Equal(before) {
+						log.WriteErr("Same the time in state.")
 						return
 					}
+					log.WriteMsg("date: %s", state.Date())
+					before = state.Date()
 
 					select {
 					case <- ctx.Done():
 						return
-					case st_ch <- status[0]:
+					case st_ch <- state:
 					}
 				}()
 			}
@@ -111,7 +120,7 @@ func init() {
 	flag.StringVar(&c_path, "c", "./vouquet.conf", "config path.")
 	flag.Parse()
 
-	if flag.NArg() < 3 {
+	if flag.NArg() < 4 {
 		die("usage : vqt_florister [-c <config path>] <NAMEofFlorist> <SYMBOL> <SOIL> <SIZE>")
 	}
 
@@ -127,6 +136,7 @@ func init() {
 		die("empty path")
 	}
 
+	Cpath = c_path
 	Name = name
 	Symbol = symbol
 	Soil = soil

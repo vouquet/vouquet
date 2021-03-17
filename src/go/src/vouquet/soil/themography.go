@@ -17,17 +17,9 @@ func NewThemograpy(name string, ctx context.Context) (*Themography, error) {
 	}
 	c_ctx, cancel := context.WithCancel(ctx)
 
-	var s shop.Shop
-	switch name {
-	case SOIL_GMO:
-		g_shop, err := gomocoin.NewGoMOcoin("", "", c_ctx)
-		if err != nil {
-			return nil, err
-		}
-		s = g_shop
-
-	default:
-		return nil, fmt.Errorf("undefined type '%s'", name)
+	s, err := openShop(soil_name, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Themography{name:name, shop:s, ctx:c_ctx, cancel:cancel, mtx:new(sync.Mutex)}, nil

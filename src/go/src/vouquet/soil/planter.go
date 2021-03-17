@@ -21,17 +21,52 @@ type Planter interface {
 }
 
 type Flowerpot struct {
-	symbol string
+	symbol  string
+	soil    shop.Shop
+	sp_list []*Sprout
 
-	log    logger
+	hv_cnt  int64
+	yield   float64
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	mtx    *sync.Mutex
+	log     logger
+
+	ctx     context.Context
+	cancel  context.CancelFunc
+	mtx     *sync.Mutex
 }
 
-func NewFlowerpot(name string, symbol string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
-	return nil, nil
+func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	c_ctx, cancel := context.WithCancel(ctx)
+
+	c, err := loadConfig(c_path)
+	if err != nil {
+		return nil, err
+	}
+	s, err := openShop(soil_name, c)
+	if err != nil {
+		return nil, err
+	}
+
+	self := &Flowerpot{
+		symbol:symbol,
+		soil:s,
+		sp_list: []*Sprout{},
+
+		log: log,
+
+		ctx: ctx,
+		cancel: cancel,
+		mtx: new(sync.Mutex)
+	}
+
+	_, err := self.updateSproutList()
+	if err != nil {
+		return nil, err
+	}
+	return self, nil
 }
 
 func (self *Flowerpot) Symbol() string {
@@ -46,16 +81,33 @@ func (self *Flowerpot) ShowSproutList() ([]*Sprout, error) {
 	return nil, nil
 }
 
+func (self *Flowerpot) updateSproutList() error {
+}
+
 func (self *Flowerpot) Harvest(sp *Sprout, price float64) error {
 	return nil
 }
 
 func (self *Flowerpot) HarvestCnt() int64 {
-	return 0
+	self.lock()
+	defer self.unlock()
+
+	return self.hv_cnt
 }
 
 func (self *Flowerpot) Yield() float64 {
-	return float64(0)
+	self.lock()
+	defer self.unlock()
+
+	return self.yield
+}
+
+func (self *Flowerpot) lock() {
+	self.mtx.Lock()
+}
+
+func (self *Flowerpot) unlock() {
+	self.mtx.Unlock()
 }
 
 type Sprout struct {
