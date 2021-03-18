@@ -181,7 +181,7 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 	if h_sp.pos == nil {
 		return fmt.Errorf("nil pointer error, doesn't get a position pointer.")
 	}
-	if err := self.soil.OrderStreamOut(h_sp.position); err != nil {
+	if err := self.soil.OrderStreamOut(h_sp.pos); err != nil {
 		return err
 	}
 
