@@ -62,7 +62,7 @@ func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Co
 		mtx: new(sync.Mutex),
 	}
 
-	if err := self.updateSproutList(); err != nil {
+	if err := self.updateSproutList(true); err != nil {
 		return nil, err
 	}
 	return self, nil
@@ -76,6 +76,19 @@ func (self *Flowerpot) SetSeed(o_type string, size float64, price float64) error
 	self.lock()
 	defer self.unlock()
 
+	if err := self.soil.OrderStreamIn(o_type, self.symbol, size); err != nil {
+		return err
+	}
+	sp := &Sprout{
+		date: time.Now(),
+		price: price,
+		size: size,
+		o_type: o_type,
+	}
+
+	self.log.WriteMsg("[SetSeed] %s, size: %.3f, price: %.3f", o_type, size, price)
+
+	self.sp_list = append(self.sp_list, sp)
 	return nil
 }
 
@@ -83,7 +96,7 @@ func (self *Flowerpot) ShowSproutList() ([]*Sprout, error) {
 	self.lock()
 	defer self.unlock()
 
-	if err := self.updateSproutList(); err != nil {
+	if err := self.updateSproutList(false); err != nil {
 		return nil, err
 	}
 	return self.getSproutList()
@@ -99,7 +112,7 @@ func (self *Flowerpot) getSproutList() ([]*Sprout, error) {
 	return ret_spl, nil
 }
 
-func (self *Flowerpot) updateSproutList() error {
+func (self *Flowerpot) updateSproutList(always_update bool) error {
 	has_pos_idx := make(map[string]interface{})
 	no_pos := []*Sprout{}
 	for _, sp := range self.sp_list {
@@ -108,6 +121,12 @@ func (self *Flowerpot) updateSproutList() error {
 			continue
 		}
 		has_pos_idx[sp.posId()] = nil
+	}
+
+	if !always_update {
+		if len(has_pos_idx) == len(self.sp_list) {
+			return nil
+		}
 	}
 
 	poss, err := self.soil.GetPositions(self.symbol)
@@ -155,9 +174,40 @@ func (self *Flowerpot) updateSproutList() error {
 	return nil
 }
 
-func (self *Flowerpot) Harvest(sp *Sprout, price float64) error {
+func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 	self.lock()
 	defer self.unlock()
+
+	if h_sp.pos == nil {
+		return fmt.Errorf("nil pointer error, doesn't get a position pointer.")
+	}
+	if err := self.soil.OrderStreamOut(h_sp.position); err != nil {
+		return err
+	}
+
+	var win float64
+	switch h_sp.OrderType() {
+	case TYPE_SELL:
+		win = (h_sp.Price() * h_sp.Size()) - (price * h_sp.Size())
+	case TYPE_BUY:
+		win = (price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
+	default:
+		return fmt.Errorf("unkown operation, '%s'", h_sp.OrderType())
+	}
+	self.yield += win
+
+	for i, sp := range self.sp_list {
+		if !sp.equal(h_sp) {
+			continue
+		}
+
+		self.sp_list = append(self.sp_list[:i], (self.sp_list)[i+1:]...)
+		break
+	}
+
+	self.log.WriteMsg("[Harvest] %s, size: %.3f, price: %.3f -> %.3f, win: %.3f(%.3f)",
+							h_sp.OrderType(), h_sp.Size(), h_sp.Price(), price,
+							win, self.yield)
 	return nil
 }
 

@@ -43,6 +43,12 @@ func (self *logger) WriteErr(s string, msg ...interface{}) {
 	}
 }
 
+func (self *logger) WriteDebug(s string, msg ...interface{}) {
+	if Detail {
+		fmt.Fprintf(os.Stdout, "[DEBUG] " + s + "\n" , msg...)
+	}
+}
+
 func eval() error {
 	now := time.Now()
 	start := now.AddDate(0, 0, int(TestDays * -1))

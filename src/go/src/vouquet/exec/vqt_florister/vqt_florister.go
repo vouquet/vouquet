@@ -39,6 +39,11 @@ func (self *logger) WriteErr(s string, msg ...interface{}) {
 	fmt.Fprintf(os.Stderr, tstr + " " + s + "\n" , msg...)
 }
 
+func (self *logger) WriteDebug(s string, msg ...interface{}) {
+	tstr := time.Now().Format("2006/01/02 15:04:05")
+	fmt.Fprintf(os.Stdout, tstr + " [DEBUG] " + s + "\n" , msg...)
+}
+
 func florister() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
