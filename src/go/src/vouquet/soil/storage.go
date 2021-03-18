@@ -84,7 +84,7 @@ func (self *Registry) Record(ss *Status) error {
 	defer self.unlock()
 
 	for symbol, rate := range ss.rates {
-		err := self.do_sql_updateSymbol(ss.name, symbol, rate.Ask(), rate.Bid())
+		err := self.do_sql_updateSymbol(ss.soil_name, symbol, rate.Ask(), rate.Bid())
 		if err != nil {
 			self.log.WriteErr("Registry.Record: %s", err)
 		}
@@ -97,6 +97,13 @@ func (self *Registry) GetStatus(tname string, symbol string, st time.Time, et ti
 	defer self.unlock()
 
 	return self.do_sql_getStatus(tname, symbol, st, et)
+}
+
+func (self *Registry) GetLastState(tname string, symbol string) (*State, error) {
+	self.lock()
+	defer self.unlock()
+
+	return self.do_sql_getLastState(tname, symbol)
 }
 
 func (self *Registry) checktbl() error {
@@ -151,6 +158,34 @@ func (self *Registry) do_sql_updateSymbol(tname string, symbol string, ask float
 		return fmt.Errorf("do_sql_updateSymbol: query: '%s', err: '%s'", qstr, err)
 	}
 	return nil
+}
+
+func (self *Registry) do_sql_getLastState(tname string, symbol string) (*State, error) {
+	base := "SELECT time, ask, bid FROM %s WHERE symbol = '%s' ORDER BY time DESC limit 1;"
+	qstr := fmt.Sprintf(base, tname, symbol)
+
+	rows, err := self.db.QueryContext(self.ctx, qstr)
+	if err != nil {
+		return nil, fmt.Errorf("do_sql_getLastState: query: '%s', err: '%s'", qstr, err)
+	}
+	defer rows.Close()
+
+	var state *State
+	for rows.Next() {
+		var t time.Time
+		var ask float64
+		var bid float64
+		if err := rows.Scan(&t, &ask, &bid); err != nil {
+			return nil, fmt.Errorf("do_sql_getLastState: cannot convert slqdata. : '%s'", err)
+		}
+
+		state = &State{ask: ask, bid: bid, date: t}
+		break
+	}
+	if state == nil {
+		return nil, fmt.Errorf("do_sql_getLastState: not found data.")
+	}
+	return state, nil
 }
 
 func (self *Registry) do_sql_getStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {

@@ -27,6 +27,10 @@ func (self *logger) WriteErr(s string, msg ...interface{}) {
 	fmt.Fprintf(os.Stderr, s + "\n" , msg...)
 }
 
+func (self *logger) WriteDebug(s string, msg ...interface{}) {
+	fmt.Fprintf(os.Stdout, "[DEBUG] " + s + "\n" , msg...)
+}
+
 func registrar() error {
 	log := new(logger)
 

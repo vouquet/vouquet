@@ -43,6 +43,12 @@ func (self *logger) WriteErr(s string, msg ...interface{}) {
 	}
 }
 
+func (self *logger) WriteDebug(s string, msg ...interface{}) {
+	if Detail {
+		fmt.Fprintf(os.Stdout, "[DEBUG] " + s + "\n" , msg...)
+	}
+}
+
 func eval() error {
 	now := time.Now()
 	start := now.AddDate(0, 0, int(TestDays * -1))
@@ -65,7 +71,7 @@ func eval() error {
 	chan_list := make(map[string]chan *soil.State)
 	for _, name := range florist.MEMBERS {
 
-		p := soil.NewTestPlanter(name, seed.SYMBOL_BTC_REVERAGE, log)
+		p := soil.NewTestPlanter(soil.SOIL_GMO, seed.SYMBOL_BTC_REVERAGE, log)
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err

@@ -21,17 +21,51 @@ type Planter interface {
 }
 
 type Flowerpot struct {
-	symbol string
+	symbol  string
+	soil    shop.Shop
+	sp_list []*Sprout
 
-	log    logger
+	hv_cnt  int64
+	yield   float64
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	mtx    *sync.Mutex
+	log     logger
+
+	ctx     context.Context
+	cancel  context.CancelFunc
+	mtx     *sync.Mutex
 }
 
-func NewFlowerpot(name string, symbol string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
-	return nil, nil
+func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	c_ctx, cancel := context.WithCancel(ctx)
+
+	c, err := loadConfig(c_path)
+	if err != nil {
+		return nil, err
+	}
+	s, err := openShop(soil_name, c, c_ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	self := &Flowerpot{
+		symbol:symbol,
+		soil:s,
+		sp_list: []*Sprout{},
+
+		log: log,
+
+		ctx: ctx,
+		cancel: cancel,
+		mtx: new(sync.Mutex),
+	}
+
+	if err := self.updateSproutList(true); err != nil {
+		return nil, err
+	}
+	return self, nil
 }
 
 func (self *Flowerpot) Symbol() string {
@@ -39,23 +73,164 @@ func (self *Flowerpot) Symbol() string {
 }
 
 func (self *Flowerpot) SetSeed(o_type string, size float64, price float64) error {
+	self.lock()
+	defer self.unlock()
+
+	if err := self.soil.OrderStreamIn(o_type, self.symbol, size); err != nil {
+		return err
+	}
+	sp := &Sprout{
+		date: time.Now(),
+		price: price,
+		size: size,
+		o_type: o_type,
+	}
+
+	self.log.WriteMsg("[SetSeed] %s, size: %.3f, price: %.3f", o_type, size, price)
+
+	self.sp_list = append(self.sp_list, sp)
 	return nil
 }
 
 func (self *Flowerpot) ShowSproutList() ([]*Sprout, error) {
-	return nil, nil
+	self.lock()
+	defer self.unlock()
+
+	if err := self.updateSproutList(false); err != nil {
+		return nil, err
+	}
+	return self.getSproutList()
 }
 
-func (self *Flowerpot) Harvest(sp *Sprout, price float64) error {
+func (self *Flowerpot) getSproutList() ([]*Sprout, error) {
+	if self.sp_list == nil {
+		return nil, fmt.Errorf("sprout list is nil.")
+	}
+
+	ret_spl := make([]*Sprout, len(self.sp_list))
+	copy(ret_spl, self.sp_list)
+	return ret_spl, nil
+}
+
+func (self *Flowerpot) updateSproutList(always_update bool) error {
+	has_pos_idx := make(map[string]interface{})
+	no_pos := []*Sprout{}
+	for _, sp := range self.sp_list {
+		if sp.posId() == "" {
+			no_pos = append(no_pos, sp)
+			continue
+		}
+		has_pos_idx[sp.posId()] = nil
+	}
+
+	if !always_update {
+		if len(has_pos_idx) == len(self.sp_list) {
+			return nil
+		}
+	}
+
+	poss, err := self.soil.GetPositions(self.symbol)
+	if err != nil {
+		return err
+	}
+	for _, pos := range poss {
+		if _, ok := has_pos_idx[pos.Id()]; ok {
+			continue
+		}
+
+		mapped := false
+		for _, sp := range no_pos {
+			if sp.pos != nil {
+				continue
+			}
+
+			if sp.o_type != pos.OrderType() {
+				continue
+			}
+
+			upper := sp.price * 1.02
+			lower := sp.price * 0.98
+			if pos.Price() > upper || lower > pos.Price() {
+				continue
+			}
+
+			sp.pos = pos
+			mapped = true
+		}
+
+		if mapped {
+			continue
+		}
+		sp := &Sprout{
+			date: time.Now(),//TODO: want to set datetime where shop.position.
+			price: pos.Price(),
+			size: pos.Size(),
+			o_type: pos.OrderType(),
+			pos: pos,
+		}
+		self.sp_list = append(self.sp_list, sp)
+	}
+
+	return nil
+}
+
+func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
+	self.lock()
+	defer self.unlock()
+
+	if h_sp.pos == nil {
+		return fmt.Errorf("nil pointer error, doesn't get a position pointer.")
+	}
+	if err := self.soil.OrderStreamOut(h_sp.position); err != nil {
+		return err
+	}
+
+	var win float64
+	switch h_sp.OrderType() {
+	case TYPE_SELL:
+		win = (h_sp.Price() * h_sp.Size()) - (price * h_sp.Size())
+	case TYPE_BUY:
+		win = (price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
+	default:
+		return fmt.Errorf("unkown operation, '%s'", h_sp.OrderType())
+	}
+	self.yield += win
+
+	for i, sp := range self.sp_list {
+		if !sp.equal(h_sp) {
+			continue
+		}
+
+		self.sp_list = append(self.sp_list[:i], (self.sp_list)[i+1:]...)
+		break
+	}
+
+	self.log.WriteMsg("[Harvest] %s, size: %.3f, price: %.3f -> %.3f, win: %.3f(%.3f)",
+							h_sp.OrderType(), h_sp.Size(), h_sp.Price(), price,
+							win, self.yield)
 	return nil
 }
 
 func (self *Flowerpot) HarvestCnt() int64 {
-	return 0
+	self.lock()
+	defer self.unlock()
+
+	return self.hv_cnt
 }
 
 func (self *Flowerpot) Yield() float64 {
-	return float64(0)
+	self.lock()
+	defer self.unlock()
+
+	return self.yield
+}
+
+func (self *Flowerpot) lock() {
+	self.mtx.Lock()
+}
+
+func (self *Flowerpot) unlock() {
+	self.mtx.Unlock()
 }
 
 type Sprout struct {
@@ -112,6 +287,13 @@ func (self *Sprout) equal(sp *Sprout) bool {
 		return false
 	}
 	return self.pos.Id() == sp.pos.Id()
+}
+
+func (self *Sprout) posId() string {
+	if self.pos == nil {
+		return ""
+	}
+	return self.pos.Id()
 }
 
 type testPosition struct {
