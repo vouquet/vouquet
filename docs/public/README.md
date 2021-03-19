@@ -17,5 +17,5 @@ Vouquet 公開仕様
 	* 現在は、Twitterのみ通知可能です
 
 ## florist 開発方法
-	* 未準備
+* 未準備
 	* [共通インタフェースの用意後](https://github.com/vouquet/vouquet/issues/18) に、手順の追加をおこないます
