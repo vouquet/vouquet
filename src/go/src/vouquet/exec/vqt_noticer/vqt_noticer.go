@@ -89,7 +89,7 @@ func noticer() error {
 						val_type = "ask"
 					}
 
-					msg = fmt.Sprintf("%s ポジション 作成, エントリー価格(%s): %.3f",
+					msg = fmt.Sprintf("%s ポジション 作成\nエントリー価格(%s): %.3f",
 											jp_o_str, val_type, sr.Price())
 				} else {
 					var jp_o_str string
