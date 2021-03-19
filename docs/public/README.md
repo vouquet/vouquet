@@ -1,7 +1,7 @@
 Vouquet 公開仕様
 ===
 
-![Dataflow](./public/media/Vouquet_Dataflow.png)
+![Dataflow](./media/Vouquet_Dataflow.png)
 
 ## 各種実行ファイルの説明
 
