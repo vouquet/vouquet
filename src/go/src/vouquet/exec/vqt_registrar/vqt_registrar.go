@@ -20,15 +20,18 @@ var (
 type logger struct {}
 
 func (self *logger) WriteMsg(s string, msg ...interface{}) {
-	fmt.Fprintf(os.Stdout, s + "\n" , msg...)
+	tstr := time.Now().Format("2006/01/02 15:04:05")
+	fmt.Fprintf(os.Stdout, tstr + " " + s + "\n" , msg...)
 }
 
 func (self *logger) WriteErr(s string, msg ...interface{}) {
-	fmt.Fprintf(os.Stderr, s + "\n" , msg...)
+	tstr := time.Now().Format("2006/01/02 15:04:05")
+	fmt.Fprintf(os.Stderr, tstr + " " + s + "\n" , msg...)
 }
 
 func (self *logger) WriteDebug(s string, msg ...interface{}) {
-	fmt.Fprintf(os.Stdout, "[DEBUG] " + s + "\n" , msg...)
+	tstr := time.Now().Format("2006/01/02 15:04:05")
+	fmt.Fprintf(os.Stdout, tstr + " [DEBUG] " + s + "\n" , msg...)
 }
 
 func registrar() error {
