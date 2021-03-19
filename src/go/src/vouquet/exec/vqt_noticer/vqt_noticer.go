@@ -128,7 +128,7 @@ func init() {
 	flag.Parse()
 
 	if flag.NArg() < 3 {
-		die("usage : vqt_florister [-c <config path>] <Path of Credentical Twitter> <SYMBOL> <SOIL>")
+		die("usage : vqt_florister [-c <config path>] <Path of Credentical Twitter> <SEED> <SOIL>")
 	}
 
 	tw_cpath := flag.Arg(0)

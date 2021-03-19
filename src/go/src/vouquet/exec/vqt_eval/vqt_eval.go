@@ -161,10 +161,10 @@ func init() {
 	flag.Parse()
 
 	if flag.NArg() < 5 {
-		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SYMBOL> <SOIL> <SIZE>")
+		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
 	}
 	if flag.NFlag() < 0 {
-		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SYMBOL> <SOIL> <SIZE>")
+		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
 	}
 
 	st_s := flag.Arg(0)

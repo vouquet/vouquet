@@ -125,7 +125,7 @@ func init() {
 	flag.Parse()
 
 	if flag.NArg() < 4 {
-		die("usage : vqt_florister [-c <config path>] <NAMEofFlorist> <SYMBOL> <SOIL> <SIZE>")
+		die("usage : vqt_florister [-c <config path>] <NAMEofFlorist> <SEED> <SOIL> <SIZE>")
 	}
 
 	name := flag.Arg(0)
