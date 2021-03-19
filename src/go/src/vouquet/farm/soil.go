@@ -11,7 +11,7 @@ import (
 )
 
 func openShop(name string, conf *Config, ctx context.Context) (shop.Shop, error) {
-	var s shop.Shop
+	var soil shop.Shop
 	switch name {
 	case SOIL_GMO:
 		var key string
@@ -25,11 +25,11 @@ func openShop(name string, conf *Config, ctx context.Context) (shop.Shop, error)
 		if err != nil {
 			return nil, err
 		}
-		s = g_shop
+		soil = g_shop
 
 	default:
 		return nil, fmt.Errorf("undefined name of soil '%s'", name)
 	}
 
-	return s, nil
+	return soil, nil
 }
