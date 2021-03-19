@@ -12,7 +12,7 @@ import (
 )
 
 type Planter interface {
-	Symbol() string
+	Seed() string
 	SetSeed(string, float64, float64) error //TODO: not use rate, only stream order.
 	ShowSproutList() ([]*Sprout, error)
 	Harvest(*Sprout, float64) error //TODO: not use rate, only stream order.
@@ -23,7 +23,7 @@ type Planter interface {
 }
 
 type Flowerpot struct {
-	symbol  string
+	seed  string
 	soil    shop.Shop
 	sp_list []*Sprout
 
@@ -39,7 +39,7 @@ type Flowerpot struct {
 	mtx     *sync.Mutex
 }
 
-func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
+func NewFlowerpot(soil_name string, seed string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -55,7 +55,7 @@ func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Co
 	}
 
 	self := &Flowerpot{
-		symbol:symbol,
+		seed:seed,
 		soil:s,
 		sp_list: []*Sprout{},
 
@@ -72,15 +72,15 @@ func NewFlowerpot(soil_name string, symbol string, c_path string, ctx context.Co
 	return self, nil
 }
 
-func (self *Flowerpot) Symbol() string {
-	return self.symbol
+func (self *Flowerpot) Seed() string {
+	return self.seed
 }
 
 func (self *Flowerpot) SetSeed(o_type string, size float64, price float64) error {
 	self.lock()
 	defer self.unlock()
 
-	if err := self.soil.OrderStreamIn(o_type, self.symbol, size); err != nil {
+	if err := self.soil.OrderStreamIn(o_type, self.seed, size); err != nil {
 		return err
 	}
 	sp := &Sprout{
@@ -133,7 +133,7 @@ func (self *Flowerpot) updateSproutList(always_update bool) error {
 		}
 	}
 
-	poss, err := self.soil.GetPositions(self.symbol)
+	poss, err := self.soil.GetPositions(self.seed)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (self *Sprout) HasPosition() bool {
 	return self.pos != nil
 }
 
-func (self *Sprout) Symbol() string {
+func (self *Sprout) Seed() string {
 	if self.pos == nil {
 		return ""
 	}
@@ -323,15 +323,15 @@ func (self *Sprout) posId() string {
 
 type testPosition struct {
 	id     string
-	symbol string
+	seed   string
 	size   float64
 	price  float64
 	o_type string
 }
 
-func newTestPosition(o_type string, symbol string, size float64, price float64) *testPosition {
+func newTestPosition(o_type string, seed string, size float64, price float64) *testPosition {
 	id := fmt.Sprintf("%v", time.Now().Unix())
-	return &testPosition{id:id, symbol:symbol, size:size, price:price, o_type:o_type}
+	return &testPosition{id:id, seed:seed, size:size, price:price, o_type:o_type}
 }
 
 func (self *testPosition) Id() string {
@@ -339,7 +339,7 @@ func (self *testPosition) Id() string {
 }
 
 func (self *testPosition) Symbol() string {
-	return self.symbol
+	return self.seed
 }
 
 func (self *testPosition) Size() float64 {
@@ -355,7 +355,7 @@ func (self *testPosition) OrderType() string {
 }
 
 type TestPlanter struct {
-	symbol     string
+	seed     string
 
 	sp_list    []*Sprout
 
@@ -368,24 +368,24 @@ type TestPlanter struct {
 	mtx     *sync.Mutex
 }
 
-func NewTestPlanter(symbol string, log logger) *TestPlanter {
+func NewTestPlanter(seed string, log logger) *TestPlanter {
 	return &TestPlanter{
-		symbol: symbol,
+		seed: seed,
 		sp_list: []*Sprout{},
 		log: log,
 		mtx: new(sync.Mutex),
 	}
 }
 
-func (self *TestPlanter) Symbol() string {
-	return self.symbol
+func (self *TestPlanter) Seed() string {
+	return self.seed
 }
 
 func (self *TestPlanter) SetSeed(o_type string, size float64, price float64) error {
 	self.lock()
 	defer self.unlock()
 
-	tpos := newTestPosition(o_type, self.symbol, size, price)
+	tpos := newTestPosition(o_type, self.seed, size, price)
 	sp := &Sprout{
 		date: time.Now(),
 		price: price,

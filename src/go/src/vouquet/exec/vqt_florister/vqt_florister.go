@@ -22,7 +22,7 @@ var (
 	Cpath  string
 
 	Name   string
-	Symbol string
+	Seed string
 	Soil   string
 	Size   float64
 )
@@ -57,12 +57,12 @@ func florister() error {
 
 	now := time.Now()
 	start := now.AddDate(0, 0, -1)
-	init_status, err := r.GetStatus(Soil, Symbol, start, now)
+	init_status, err := r.GetStatus(Soil, Seed, start, now)
 	if err != nil {
 		return err
 	}
 
-	pl, err := farm.NewFlowerpot(Soil, Symbol, Cpath, ctx, log)
+	pl, err := farm.NewFlowerpot(Soil, Seed, Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func florister() error {
 					mtx.Lock()
 					defer mtx.Unlock()
 
-					state, err := r.GetLastState(Soil, Symbol)
+					state, err := r.GetLastState(Soil, Seed)
 					if err != nil {
 						log.WriteErr("Cannot get status: '%s'", err)
 						return
@@ -129,7 +129,7 @@ func init() {
 	}
 
 	name := flag.Arg(0)
-	symbol := flag.Arg(1)
+	seed := flag.Arg(1)
 	soil := flag.Arg(2)
 	size, err := strconv.ParseFloat(flag.Arg(3), 64)
 	if err != nil {
@@ -142,7 +142,7 @@ func init() {
 
 	Cpath = c_path
 	Name = name
-	Symbol = symbol
+	Seed = seed
 	Soil = soil
 	Size = size
 }

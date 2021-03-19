@@ -16,7 +16,7 @@ import (
 var (
 	Cpath   string
 	TwCpath string
-	Symbol  string
+	Seed  string
 	Soil    string
 )
 
@@ -47,7 +47,7 @@ func noticer() error {
 		return err
 	}
 
-	s_recorder, err := farm.OpenShipRecorder(Soil, Symbol, Cpath, ctx, log)
+	s_recorder, err := farm.OpenShipRecorder(Soil, Seed, Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func init() {
 	}
 
 	tw_cpath := flag.Arg(0)
-	symbol := flag.Arg(1)
+	seed := flag.Arg(1)
 	soil := flag.Arg(2)
 
 	if tw_cpath == "" {
@@ -144,7 +144,7 @@ func init() {
 
 	Cpath = c_path
 	TwCpath = tw_cpath
-	Symbol = symbol
+	Seed = seed
 	Soil = soil
 }
 

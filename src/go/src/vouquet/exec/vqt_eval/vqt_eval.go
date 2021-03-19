@@ -26,7 +26,7 @@ var (
 	Start  time.Time
 	End    time.Time
 
-	Symbol string
+	Seed string
 	Soil   string
 	Size   float64
 
@@ -65,7 +65,7 @@ func eval() error {
 	}
 	defer r.Close()
 
-	status, err := r.GetStatus(Soil, Symbol, before_data, Start)
+	status, err := r.GetStatus(Soil, Seed, before_data, Start)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func eval() error {
 	chan_list := make(map[string]chan *farm.State)
 	for _, name := range florist.MEMBERS {
 
-		p := farm.NewTestPlanter(Symbol, log)
+		p := farm.NewTestPlanter(Seed, log)
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
@@ -90,7 +90,7 @@ func eval() error {
 	var tail time.Time
 
 	go func() {
-		t_status, err := r.GetStatus(Soil, Symbol, Start, End)
+		t_status, err := r.GetStatus(Soil, Seed, Start, End)
 		if err != nil {
 			return
 		}
@@ -169,7 +169,7 @@ func init() {
 
 	st_s := flag.Arg(0)
 	et_s := flag.Arg(1)
-	symbol := flag.Arg(2)
+	seed := flag.Arg(2)
 	soil := flag.Arg(3)
 	size_s := flag.Arg(4)
 
@@ -197,8 +197,8 @@ func init() {
 	if c_path == "" {
 		die("cannot set empty value of config path.")
 	}
-	if symbol == "" {
-		die("cannot set empty value of symbol.")
+	if seed == "" {
+		die("cannot set empty value of seed.")
 	}
 	if soil == "" {
 		die("cannot set empty value of soil.")
@@ -207,7 +207,7 @@ func init() {
 	Detail = detail
 	VeryDetail = very_detail
 	Cpath = c_path
-	Symbol = symbol
+	Seed = seed
 	Soil = soil
 	Size = size
 
