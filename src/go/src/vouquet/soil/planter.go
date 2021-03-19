@@ -16,8 +16,10 @@ type Planter interface {
 	SetSeed(string, float64, float64) error //TODO: not use rate, only stream order.
 	ShowSproutList() ([]*Sprout, error)
 	Harvest(*Sprout, float64) error //TODO: not use rate, only stream order.
-	HarvestCnt() int64
-	Yield() float64
+	Win()     float64
+	WinCnt()  int64
+	Lose()    float64
+	LoseCnt() int64
 }
 
 type Flowerpot struct {
@@ -25,8 +27,10 @@ type Flowerpot struct {
 	soil    shop.Shop
 	sp_list []*Sprout
 
-	hv_cnt  int64
-	yield   float64
+	win      float64
+	win_cnt  int64
+	lose     float64
+	lose_cnt int64
 
 	log     logger
 
@@ -185,16 +189,23 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 		return err
 	}
 
-	var win float64
+	var yield float64
 	switch h_sp.OrderType() {
 	case TYPE_SELL:
-		win = (h_sp.Price() * h_sp.Size()) - (price * h_sp.Size())
+		yield = (h_sp.Price() * h_sp.Size()) - (price * h_sp.Size())
 	case TYPE_BUY:
-		win = (price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
+		yield = (price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
 	default:
 		return fmt.Errorf("unkown operation, '%s'", h_sp.OrderType())
 	}
-	self.yield += win
+
+	if yield < 0 {
+		self.lose += yield
+		self.lose_cnt++
+	} else {
+		self.win += yield
+		self.win_cnt++
+	}
 
 	for i, sp := range self.sp_list {
 		if !sp.equal(h_sp) {
@@ -205,24 +216,38 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 		break
 	}
 
-	self.log.WriteMsg("[Harvest] %s, size: %.3f, price: %.3f -> %.3f, win: %.3f(%.3f)",
+	self.log.WriteMsg("[Harvest] %s, size: %.3f, price: %.3f -> %.3f, win: %.3f(/%.3f)",
 							h_sp.OrderType(), h_sp.Size(), h_sp.Price(), price,
-							win, self.yield)
+							yield, self.win + self.lose)
 	return nil
 }
 
-func (self *Flowerpot) HarvestCnt() int64 {
+func (self *Flowerpot) Win() float64 {
 	self.lock()
 	defer self.unlock()
 
-	return self.hv_cnt
+	return self.win
 }
 
-func (self *Flowerpot) Yield() float64 {
+func (self *Flowerpot) WinCnt() int64 {
 	self.lock()
 	defer self.unlock()
 
-	return self.yield
+	return self.win_cnt
+}
+
+func (self *Flowerpot) Lose() float64 {
+	self.lock()
+	defer self.unlock()
+
+	return self.lose
+}
+
+func (self *Flowerpot) LoseCnt() int64 {
+	self.lock()
+	defer self.unlock()
+
+	return self.lose_cnt
 }
 
 func (self *Flowerpot) lock() {
@@ -330,20 +355,21 @@ func (self *testPosition) OrderType() string {
 }
 
 type TestPlanter struct {
-	name       string
 	symbol     string
 
 	sp_list    []*Sprout
-	yield_cnt  float64
-	hvst_cnt   int64
+
+	win      float64
+	win_cnt  int64
+	lose     float64
+	lose_cnt int64
 
 	log     logger
 	mtx     *sync.Mutex
 }
 
-func NewTestPlanter(name string, symbol string, log logger) *TestPlanter {
+func NewTestPlanter(symbol string, log logger) *TestPlanter {
 	return &TestPlanter{
-		name: name,
 		symbol: symbol,
 		sp_list: []*Sprout{},
 		log: log,
@@ -395,8 +421,13 @@ func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
 		return fmt.Errorf("undefined type of order: '%s'", sp.OrderType())
 	}
 
-	self.yield_cnt += yield
-	self.hvst_cnt ++
+	if yield < 0 {
+		self.lose += yield
+		self.lose_cnt++
+	} else {
+		self.win += yield
+		self.win_cnt++
+	}
 
 	sp_list := []*Sprout{}
 	for i, bsp := range self.sp_list {
@@ -409,23 +440,37 @@ func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
 	}
 	self.sp_list = sp_list
 
-	self.log.WriteMsg("%s.Harvested(%s) orderIn: %f -> orderOut: %f, win: %f",
-							self.name, sp.OrderType(), in_val, out_val, yield)
+	self.log.WriteMsg("Harvested(%s) orderIn: %f -> orderOut: %f, win: %f",
+							sp.OrderType(), in_val, out_val, yield)
 	return nil
 }
 
-func (self *TestPlanter) HarvestCnt() int64 {
+func (self *TestPlanter) Win() float64 {
 	self.lock()
 	defer self.unlock()
 
-	return self.hvst_cnt
+	return self.win
 }
 
-func (self *TestPlanter) Yield() float64 {
+func (self *TestPlanter) WinCnt() int64 {
 	self.lock()
 	defer self.unlock()
 
-	return self.yield_cnt
+	return self.win_cnt
+}
+
+func (self *TestPlanter) Lose() float64 {
+	self.lock()
+	defer self.unlock()
+
+	return self.lose
+}
+
+func (self *TestPlanter) LoseCnt() int64 {
+	self.lock()
+	defer self.unlock()
+
+	return self.lose_cnt
 }
 
 func (self *TestPlanter) lock() {

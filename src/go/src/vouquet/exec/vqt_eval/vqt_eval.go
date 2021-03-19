@@ -71,16 +71,18 @@ func eval() error {
 	}
 
 	fls := make(map[string]florist.Florist)
+	pls := make(map[string]soil.Planter)
 	chan_list := make(map[string]chan *soil.State)
 	for _, name := range florist.MEMBERS {
 
-		p := soil.NewTestPlanter(Soil, Symbol, log)
+		p := soil.NewTestPlanter(Symbol, log)
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
 		}
 
 		fls[name] = fl
+		pls[name] = p
 		chan_list[name] = make(chan *soil.State)
 	}
 
@@ -127,14 +129,17 @@ func eval() error {
 	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	for _, name := range florist.MEMBERS {
-		fl, ok := fls[name]
+		pl, ok := pls[name]
 		if !ok {
 			fmt.Printf("%s : was not run test.", name)
 			continue
 		}
 
-		fmt.Printf("%s : win: %f, order count: %v, win average: %v\n",
-				name, fl.Yield(), fl.HarvestCnt(), fl.Yield() / float64(fl.HarvestCnt()))
+		fmt.Printf("*** [%s] \n", name)
+		fmt.Printf("    win: %.3f, count: %v, average: %.3f\n",
+						pl.Win(), pl.WinCnt(), pl.Win() / float64(pl.WinCnt()))
+		fmt.Printf("    lose: %.3f, count: %v, average: %.3f\n",
+						pl.Lose(), pl.LoseCnt(), pl.Lose() / float64(pl.LoseCnt()))
 	}
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 
