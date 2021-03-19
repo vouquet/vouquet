@@ -96,7 +96,6 @@ func florister() error {
 						log.WriteErr("Same the time in state.")
 						return
 					}
-					log.WriteMsg("date: %s", state.Date())
 					before = state.Date()
 
 					select {
