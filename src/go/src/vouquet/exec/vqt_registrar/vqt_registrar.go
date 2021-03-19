@@ -10,7 +10,7 @@ import (
 )
 
 import (
-	"vouquet/soil"
+	"vouquet/farm"
 )
 
 var (
@@ -38,15 +38,15 @@ func registrar() error {
 	log := new(logger)
 
 	ctx := context.Background()
-	r, err := soil.OpenRegistry(Cpath, ctx, log)
+	r, err := farm.OpenRegistry(Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
 	wg := new(sync.WaitGroup)
-	for _, s := range soil.SOIL_ALL {
-		t, err := soil.NewThemograpy(s, ctx)
+	for _, s := range farm.SOIL_ALL {
+		t, err := farm.NewThemograpy(s, ctx)
 		if err != nil {
 			return err
 		}

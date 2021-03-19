@@ -9,14 +9,14 @@ import (
 )
 
 import (
-	"vouquet/soil"
+	"vouquet/farm"
 	"vouquet/advertizer"
 )
 
 var (
 	Cpath   string
 	TwCpath string
-	Symbol  string
+	Seed  string
 	Soil    string
 )
 
@@ -47,7 +47,7 @@ func noticer() error {
 		return err
 	}
 
-	s_recorder, err := soil.OpenShipRecorder(Soil, Symbol, Cpath, ctx, log)
+	s_recorder, err := farm.OpenShipRecorder(Soil, Seed, Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -75,16 +75,16 @@ func noticer() error {
 				return nil
 			}
 
-			go func(sr *soil.ShipRecord) {
+			go func(sr *farm.ShipRecord) {
 				var msg string
 				if sr.IsOpenOrder() {
 					var jp_o_str string
 					var val_type string
-					if sr.OrderType() == soil.TYPE_SELL {
+					if sr.OrderType() == farm.TYPE_SELL {
 						jp_o_str = "ショート"
 						val_type = "bid"
 					}
-					if sr.OrderType() == soil.TYPE_BUY {
+					if sr.OrderType() == farm.TYPE_BUY {
 						jp_o_str = "ロング"
 						val_type = "ask"
 					}
@@ -94,11 +94,11 @@ func noticer() error {
 				} else {
 					var jp_o_str string
 					var val_type string
-					if sr.OrderType() == soil.TYPE_BUY {
+					if sr.OrderType() == farm.TYPE_BUY {
 						jp_o_str = "ショート"
 						val_type = "ask"
 					}
-					if sr.OrderType() == soil.TYPE_SELL {
+					if sr.OrderType() == farm.TYPE_SELL {
 						jp_o_str = "ロング"
 						val_type = "bid"
 					}
@@ -132,7 +132,7 @@ func init() {
 	}
 
 	tw_cpath := flag.Arg(0)
-	symbol := flag.Arg(1)
+	seed := flag.Arg(1)
 	soil := flag.Arg(2)
 
 	if tw_cpath == "" {
@@ -144,7 +144,7 @@ func init() {
 
 	Cpath = c_path
 	TwCpath = tw_cpath
-	Symbol = symbol
+	Seed = seed
 	Soil = soil
 }
 

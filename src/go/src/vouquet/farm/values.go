@@ -1,4 +1,4 @@
-package soil
+package farm
 
 const (
 	TYPE_SELL string = "SELL"

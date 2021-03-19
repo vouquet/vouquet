@@ -1,4 +1,4 @@
-package soil
+package farm
 
 import (
 	"sync"
@@ -20,12 +20,12 @@ func NewThemograpy(soil_name string, ctx context.Context) (*Themography, error) 
 		return nil, err
 	}
 
-	return &Themography{soil_name:soil_name, shop:s, ctx:c_ctx, cancel:cancel, mtx:new(sync.Mutex)}, nil
+	return &Themography{soil_name:soil_name, soil:s, ctx:c_ctx, cancel:cancel, mtx:new(sync.Mutex)}, nil
 }
 
 type Themography struct {
 	soil_name  string
-	shop  shop.Shop
+	soil       shop.Shop
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -36,7 +36,7 @@ func (self *Themography) Status() (*Status, error) {
 	self.mtx.Lock()
 	defer self.mtx.Unlock()
 
-	rates, err := self.shop.GetRate()
+	rates, err := self.soil.GetRate()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (self *Themography) Status() (*Status, error) {
 
 func (self *Themography) Release() error {
 	self.cancel()
-	return self.shop.Close()
+	return self.soil.Close()
 }
 
 type Status struct {

@@ -1,4 +1,4 @@
-package soil
+package farm
 
 import (
 	"sync"
@@ -11,7 +11,7 @@ import (
 )
 
 type ShipRecorder struct {
-	symbol string
+	seed string
 	soil   shop.Shop
 
 	p_idx  map[string]int64
@@ -24,7 +24,7 @@ type ShipRecorder struct {
 	mtx    *sync.Mutex
 }
 
-func OpenShipRecorder(soil_name string, symbol string, c_path string, ctx context.Context, log logger) (*ShipRecorder, error) {
+func OpenShipRecorder(soil_name string, seed string, c_path string, ctx context.Context, log logger) (*ShipRecorder, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -40,7 +40,7 @@ func OpenShipRecorder(soil_name string, symbol string, c_path string, ctx contex
 	}
 
 	self := &ShipRecorder{
-		symbol: symbol,
+		seed: seed,
 		soil: s,
 
 		p_idx: make(map[string]int64),
@@ -130,7 +130,7 @@ func (self *ShipRecorder) updateShipRecord() ([]*ShipRecord, error) {
 
 	srs := []*ShipRecord{}
 
-	poss, err := self.soil.GetPositions(self.symbol)
+	poss, err := self.soil.GetPositions(self.seed)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (self *ShipRecorder) updateShipRecord() ([]*ShipRecord, error) {
 		self.p_idx[pos.Id()] = time.Now().Unix()
 	}
 
-	fs, err := self.soil.GetFixes(self.symbol)
+	fs, err := self.soil.GetFixes(self.seed)
 	if err != nil {
 		return nil, err
 	}

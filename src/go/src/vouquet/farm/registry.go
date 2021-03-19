@@ -1,4 +1,4 @@
-package soil
+package farm
 
 import (
 	"fmt"
@@ -83,8 +83,8 @@ func (self *Registry) Record(ss *Status) error {
 	self.lock()
 	defer self.unlock()
 
-	for symbol, rate := range ss.rates {
-		err := self.do_sql_updateSymbol(ss.soil_name, symbol, rate.Ask(), rate.Bid())
+	for seed, rate := range ss.rates {
+		err := self.do_sql_updateSymbol(ss.soil_name, seed, rate.Ask(), rate.Bid())
 		if err != nil {
 			self.log.WriteErr("Registry.Record: %s", err)
 		}
@@ -92,33 +92,33 @@ func (self *Registry) Record(ss *Status) error {
 	return nil
 }
 
-func (self *Registry) GetStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {
+func (self *Registry) GetStatus(soil string, seed string, st time.Time, et time.Time) ([]*State, error) {
 	self.lock()
 	defer self.unlock()
 
-	return self.do_sql_getStatus(tname, symbol, st, et)
+	return self.do_sql_getStatus(soil, seed, st, et)
 }
 
-func (self *Registry) GetLastState(tname string, symbol string) (*State, error) {
+func (self *Registry) GetLastState(soil string, seed string) (*State, error) {
 	self.lock()
 	defer self.unlock()
 
-	return self.do_sql_getLastState(tname, symbol)
+	return self.do_sql_getLastState(soil, seed)
 }
 
 func (self *Registry) checktbl() error {
-	tnames, err := self.do_sql_getTables()
+	soils, err := self.do_sql_getTables()
 	if err != nil {
 		return err
 	}
 
-	tnames_idx := make(map[string]interface{})
-	for _, tname := range tnames {
-		tnames_idx[tname] = nil
+	soils_idx := make(map[string]interface{})
+	for _, soil := range soils {
+		soils_idx[soil] = nil
 	}
 
 	for _, soil := range SOIL_ALL {
-		_, ok := tnames_idx[soil]
+		_, ok := soils_idx[soil]
 		if ok {
 			continue
 		}
@@ -139,20 +139,20 @@ func (self *Registry) do_sql_getTables() ([]string, error) {
 	}
 	defer rows.Close()
 
-	var tnames []string
+	var soils []string
 	for rows.Next() {
-		var tname string
-		if err := rows.Scan(&tname); err != nil {
+		var soil string
+		if err := rows.Scan(&soil); err != nil {
 			return nil, err
 		}
-		tnames = append(tnames, tname)
+		soils = append(soils, soil)
 	}
-	return tnames, nil
+	return soils, nil
 }
 
-func (self *Registry) do_sql_updateSymbol(tname string, symbol string, ask float64, bid float64) error {
+func (self *Registry) do_sql_updateSymbol(soil string, seed string, ask float64, bid float64) error {
 	base := "INSERT INTO %s (symbol, ask, bid) VALUES ('%s', %f, %f)"
-	qstr := fmt.Sprintf(base, tname, symbol, ask, bid)
+	qstr := fmt.Sprintf(base, soil, seed, ask, bid)
 
 	if _, err := self.db.ExecContext(self.ctx, qstr); err != nil {
 		return fmt.Errorf("do_sql_updateSymbol: query: '%s', err: '%s'", qstr, err)
@@ -160,9 +160,9 @@ func (self *Registry) do_sql_updateSymbol(tname string, symbol string, ask float
 	return nil
 }
 
-func (self *Registry) do_sql_getLastState(tname string, symbol string) (*State, error) {
+func (self *Registry) do_sql_getLastState(soil string, seed string) (*State, error) {
 	base := "SELECT time, ask, bid FROM %s WHERE symbol = '%s' ORDER BY time DESC limit 1;"
-	qstr := fmt.Sprintf(base, tname, symbol)
+	qstr := fmt.Sprintf(base, soil, seed)
 
 	rows, err := self.db.QueryContext(self.ctx, qstr)
 	if err != nil {
@@ -188,10 +188,10 @@ func (self *Registry) do_sql_getLastState(tname string, symbol string) (*State, 
 	return state, nil
 }
 
-func (self *Registry) do_sql_getStatus(tname string, symbol string, st time.Time, et time.Time) ([]*State, error) {
+func (self *Registry) do_sql_getStatus(soil string, seed string, st time.Time, et time.Time) ([]*State, error) {
 	base := "SELECT time, ask, bid FROM %s WHERE symbol = '%s' AND time BETWEEN '%s:00' AND '%s:59';"
 	t_fmt := "2006-01-02 15:04"
-	qstr := fmt.Sprintf(base, tname, symbol, st.Format(t_fmt), et.Format(t_fmt))
+	qstr := fmt.Sprintf(base, soil, seed, st.Format(t_fmt), et.Format(t_fmt))
 
 	rows, err := self.db.QueryContext(self.ctx, qstr)
 	if err != nil {
