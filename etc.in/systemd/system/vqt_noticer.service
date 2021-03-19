@@ -1,0 +1,19 @@
+[Unit]
+Description=vouquet noticer(BTC_JPY coinzcom)
+After=syslog.target
+After=network.target
+
+[Service]
+LimitMEMLOCK=infinity
+LimitNOFILE=65535
+Type=simple
+User=vouquet
+Group=vouquet
+WorkingDirectory=/var/service/vouquet
+ExecStart=/var/service/vouquet/bin/vqt_noticer -c /var/service/vouquet/etc/vouquet.conf /var/service/vouquet/etc/tw_config BTC_JPY coinzcom
+Restart=always
+StandardOutput=append:/var/log/vqt_noticer.log
+StandardError=append:/var/log/vqt_noticer-err.log
+
+[Install]
+WantedBy=multi-user.target

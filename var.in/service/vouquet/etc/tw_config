@@ -1,0 +1,4 @@
+ConsumerKey = "<your consumer key>"
+ConsumerSecret = "<your consumer secre>"
+Token = "<your token>"
+AccessSecret = "<your access secret>"
