@@ -13,7 +13,7 @@ import (
 )
 
 import (
-	"vouquet/soil"
+	"vouquet/farm"
 )
 
 import (
@@ -59,7 +59,7 @@ func eval() error {
 
 	log := new(logger)
 	ctx := context.Background()
-	r, err := soil.OpenRegistry(Cpath, ctx, log)
+	r, err := farm.OpenRegistry(Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -71,11 +71,11 @@ func eval() error {
 	}
 
 	fls := make(map[string]florist.Florist)
-	pls := make(map[string]soil.Planter)
-	chan_list := make(map[string]chan *soil.State)
+	pls := make(map[string]farm.Planter)
+	chan_list := make(map[string]chan *farm.State)
 	for _, name := range florist.MEMBERS {
 
-		p := soil.NewTestPlanter(Symbol, log)
+		p := farm.NewTestPlanter(Symbol, log)
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
@@ -83,7 +83,7 @@ func eval() error {
 
 		fls[name] = fl
 		pls[name] = p
-		chan_list[name] = make(chan *soil.State)
+		chan_list[name] = make(chan *farm.State)
 	}
 
 	var head time.Time

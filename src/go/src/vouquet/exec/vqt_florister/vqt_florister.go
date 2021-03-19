@@ -11,7 +11,7 @@ import (
 )
 
 import (
-	"vouquet/soil"
+	"vouquet/farm"
 )
 
 import (
@@ -49,7 +49,7 @@ func florister() error {
 	defer cancel()
 	log := new(logger)
 
-	r, err := soil.OpenRegistry(Cpath, ctx, log)
+	r, err := farm.OpenRegistry(Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func florister() error {
 		return err
 	}
 
-	pl, err := soil.NewFlowerpot(Soil, Symbol, Cpath, ctx, log)
+	pl, err := farm.NewFlowerpot(Soil, Symbol, Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func florister() error {
 		return err
 	}
 
-	st_ch := make(chan *soil.State)
+	st_ch := make(chan *farm.State)
 	go func() {
 		defer close(st_ch)
 
