@@ -13,11 +13,12 @@ import (
 )
 
 import (
-	"vouquet/farm"
+	"github.com/vouquet/florist"
 )
 
 import (
-	"github.com/vouquet/florist"
+	"vouquet/farm"
+	"vouquet/vouquet"
 )
 
 var (
@@ -70,7 +71,7 @@ func eval() error {
 		return err
 	}
 
-	fls := make(map[string]florist.Florist)
+	fls := make(map[string]vouquet.Florist)
 	pls := make(map[string]farm.Planter)
 	chan_list := make(map[string]chan *farm.State)
 	for _, name := range florist.MEMBERS {
@@ -114,7 +115,7 @@ func eval() error {
 	for name, fl := range fls {
 		wg.Add(1)
 
-		go func(name string, fl florist.Florist) {
+		go func(name string, fl vouquet.Florist) {
 			defer wg.Done()
 
 			if err := fl.Run(ctx, Size, chan_list[name]); err != nil {
