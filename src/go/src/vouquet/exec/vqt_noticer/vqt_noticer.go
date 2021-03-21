@@ -107,7 +107,7 @@ func noticer() error {
 				}
 
 				total_yield += sr.Yield()
-				msg = fmt.Sprintf("%s ポジション 利確\n利確価格(%s): %.3f\n\n今回の利益: %.3f\n%sからの利益総額: %.1f",
+				msg = fmt.Sprintf("%s ポジション 利確\n利確価格(%s): %.3f\n\n今回の利益: %.3f\n%sからの利益総額: ¥%.1f",
 					jp_o_str, val_type, sr.Price(), sr.Yield(), wakeup_tstr, total_yield)
 			}
 
