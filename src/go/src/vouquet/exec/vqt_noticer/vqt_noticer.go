@@ -13,6 +13,10 @@ import (
 	"vouquet/advertizer"
 )
 
+const (
+	TW_WAIT_SEC int64 = 5
+)
+
 var (
 	Cpath   string
 	TwCpath string
@@ -62,6 +66,8 @@ func noticer() error {
 		return err
 	}
 
+	var date_str string = time.Now().Format("2006/01/02")
+	var date_yield float64
 	var total_yield float64
 	for {
 		select {
@@ -75,43 +81,51 @@ func noticer() error {
 				return nil
 			}
 
-			go func(sr *farm.ShipRecord) {
-				var msg string
-				if sr.IsOpenOrder() {
-					var jp_o_str string
-					var val_type string
-					if sr.OrderType() == farm.TYPE_SELL {
-						jp_o_str = "ショート"
-						val_type = "bid"
-					}
-					if sr.OrderType() == farm.TYPE_BUY {
-						jp_o_str = "ロング"
-						val_type = "ask"
-					}
+			now_str := time.Now().Format("2006/01/02")
+			if date_str != now_str {
+				date_str = now_str
+				date_yield = 0
+			}
 
-					msg = fmt.Sprintf("%s ポジション 作成\nエントリー価格(%s): %.3f",
-											jp_o_str, val_type, sr.Price())
-				} else {
-					var jp_o_str string
-					var val_type string
-					if sr.OrderType() == farm.TYPE_BUY {
-						jp_o_str = "ショート"
-						val_type = "ask"
-					}
-					if sr.OrderType() == farm.TYPE_SELL {
-						jp_o_str = "ロング"
-						val_type = "bid"
-					}
-
-					total_yield += sr.Yield()
-					msg = fmt.Sprintf("%s ポジション 利確\n利確価格(%s): %.3f\n\n今回の利益: %.3f\n%sからの利益総額: %.3f",
-						jp_o_str, val_type, sr.Price(), sr.Yield(), wakeup_tstr, total_yield)
+			var msg string
+			if sr.IsOpenOrder() {
+				var jp_o_str string
+				var val_type string
+				if sr.OrderType() == farm.TYPE_SELL {
+					jp_o_str = "ショート"
+					val_type = "bid"
+				}
+				if sr.OrderType() == farm.TYPE_BUY {
+					jp_o_str = "ロング"
+					val_type = "ask"
 				}
 
-				if err := twc.Tweet(msg); err != nil {
-					log.WriteErr("Failed tweet: '%s'", err)
+				msg = fmt.Sprintf("%s ポジション 作成\nエントリー価格(%s): %.3f",
+										jp_o_str, val_type, sr.Price())
+			} else {
+				var jp_o_str string
+				var val_type string
+				if sr.OrderType() == farm.TYPE_BUY {
+					jp_o_str = "ショート"
+					val_type = "ask"
 				}
-			}(sr)
+				if sr.OrderType() == farm.TYPE_SELL {
+					jp_o_str = "ロング"
+					val_type = "bid"
+				}
+
+				date_yield += sr.Yield()
+				total_yield += sr.Yield()
+				msg = fmt.Sprintf("%s ポジション 利確\n利確価格(%s): %.3f\n\n今回の利益: ¥%.1f\n%sの利益合計: ¥%.1f\n起動(%s)からの総額: ¥%.1f",
+					jp_o_str, val_type, sr.Price(), sr.Yield(),
+					date_str, date_yield,
+					wakeup_tstr, total_yield,)
+			}
+
+			if err := twc.Tweet(msg); err != nil {
+				log.WriteErr("Failed tweet: '%s'", err)
+			}
+			time.Sleep(time.Second * time.Duration(TW_WAIT_SEC))
 		}
 	}
 	return nil
