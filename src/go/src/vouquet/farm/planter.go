@@ -113,6 +113,7 @@ func (self *Flowerpot) getSproutList() ([]*Sprout, error) {
 
 	ret_spl := make([]*Sprout, len(self.sp_list))
 	copy(ret_spl, self.sp_list)
+
 	return ret_spl, nil
 }
 
@@ -183,6 +184,14 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 	defer self.unlock()
 
 	if h_sp.pos == nil {
+		for i, sp := range self.sp_list {
+			if !sp.equal(h_sp) {
+				continue
+			}
+
+			self.sp_list = append(self.sp_list[:i], (self.sp_list)[i+1:]...)
+			break
+		}
 		return fmt.Errorf("nil pointer error, doesn't get a position pointer.")
 	}
 	if err := self.soil.OrderStreamOut(h_sp.pos); err != nil {
@@ -402,7 +411,10 @@ func (self *TestPlanter) ShowSproutList() ([]*Sprout, error) {
 	self.lock()
 	defer self.unlock()
 
-	return self.sp_list, nil
+	c_sp_list := make([]*Sprout, len(self.sp_list))
+	copy(c_sp_list, self.sp_list)
+
+	return c_sp_list, nil
 }
 
 func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
