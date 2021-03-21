@@ -66,6 +66,8 @@ func noticer() error {
 		return err
 	}
 
+	var date_str string = time.Now().Format("2006/01/02")
+	var date_yield float64
 	var total_yield float64
 	for {
 		select {
@@ -77,6 +79,12 @@ func noticer() error {
 			}
 			if sr == nil {
 				return nil
+			}
+
+			now_str := time.Now().Format("2006/01/02")
+			if date_str != now_str {
+				date_str = now_str
+				date_yield = 0
 			}
 
 			var msg string
@@ -106,9 +114,12 @@ func noticer() error {
 					val_type = "bid"
 				}
 
+				date_yield += sr.Yield()
 				total_yield += sr.Yield()
-				msg = fmt.Sprintf("%s ポジション 利確\n利確価格(%s): %.3f\n\n今回の利益: %.3f\n%sからの利益総額: ¥%.1f",
-					jp_o_str, val_type, sr.Price(), sr.Yield(), wakeup_tstr, total_yield)
+				msg = fmt.Sprintf("%s ポジション 利確\n利確価格(%s): %.3f\n\n今回の利益: ¥%.1f\n%sの利益合計: ¥%.1f\n起動(%s)からの総額: ¥%.1f",
+					jp_o_str, val_type, sr.Price(), sr.Yield(),
+					date_str, date_yield,
+					wakeup_tstr, total_yield,)
 			}
 
 			if err := twc.Tweet(msg); err != nil {
