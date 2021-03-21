@@ -19,7 +19,7 @@ Vouquet 公開仕様
 ## Florist 開発/リリース 方法
 
 1. Floristの用意
-	* [vouquet/florist](https://github.com/vouquet/florist) へアクセスできない場合、"github.com/vouquet/florist"を[Floristライブラリ要求仕様]()に従って作成したライブラリへ書き換える
+	* [vouquet/florist](https://github.com/vouquet/florist) へアクセスできない場合、"github.com/vouquet/florist"を[Floristライブラリ要求仕様](#florist-ライブラリ要求仕様)に従って作成したライブラリへ書き換える
 2. build用コンテナの用意と各種ライブラリの解決
 	1. `cd <repository>/docker`
 		* proxy 配下の場合は、`<repository>/docker/dev-go-vouquet/Dockerfile` の、`http_proxy`及び`https_proxy` を書き換える
