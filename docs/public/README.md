@@ -59,14 +59,19 @@ Vouquet 公開仕様
 		3. `farm.Planter.ShowSproutList`によって、作成したポジション一覧の確認
 		4. `farm.Planter.Harvest`によって、ポジションの利確を行う
 	* `farm.Planter`で取引に利用する代表的なインタフェース
-		* `farm.Planter.SetSeed(seed_name string, size float64, price float64) error`
+		* `farm.Planter.SetSeed(seed_name string, size float64, opt *OpeOption) error`
 			* 引数 seed_name では、仮想通貨名を渡します
 			* 引数 size では、取引のサイズを渡します。`vouquet.Florist.Run`の、`size`を渡すことを想定しています
-			* 引数 price では、取引の値段を渡します
-				* `v0.0.2`現在、指値未対応で、全ての注文が成行です。この値はシミュレーション(`vqt_eval`)時のみ活用します
+			* 引数 opt では、実行のオプションを指定します
 		* `farm.Planter.ShowSproutList() ([]*farm.Sprout, error)`
-		* `farm.Planter.Harvest(sp *Sprout, price float64)`
+		* `farm.Planter.Harvest(sp *Sprout, opt *OpeOption)`
 			* 引数 sp では、利確する、`farm.Sprout`を 渡してください
-			* 引数 price では、取引の値段を渡します
-				* `v0.0.2`現在、指値未対応で、全ての注文が成行です。この値はシミュレーション(`vqt_eval`)時のみ活用します
+			* 引数 opt では、実行のオプションを指定します
+	* `farm.OpeOption` に存在する要素
+		* `Price`
+			* 実行時の値段を指定します。`Stream: true`時は無視されます
+		* `Stream`
+			* 実行時に指値か、成行を指定します。`Stream: true`で成行です
+			* `v0.0.3`現在、指値未対応で、全ての注文が成行です
+				* 進捗については、[https://github.com/vouquet/vouquet/issues/38](https://github.com/vouquet/vouquet/issues/38) をご覧ください
 
