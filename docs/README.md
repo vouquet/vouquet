@@ -15,6 +15,10 @@ Vouquet
 * Vouquet を利用した取引に関しては自己責任です
 	* ライブラリの動作保証も行っておりません
 
+### インストール手順
+1. [公開仕様 ##Florist 開発/リリース 方法](./public/README.md#florist-開発リリース-方法) を利用し、floristの開発やbuildを行う
+2. [Vouquetのサーバインストール手順](./ope/install.md)
+
 ### レポート方法
 
 * 質問や報告がある場合、[Issueの一覧](https://github.com/vouquet/vouquet/issues) に同じ質問がないことを確認してから、[Issue作成](https://github.com/vouquet/vouquet/issues/new)をしてください
