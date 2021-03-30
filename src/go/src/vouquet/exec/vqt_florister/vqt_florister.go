@@ -70,6 +70,7 @@ func florister() error {
 	if err != nil {
 		return err
 	}
+	fl.SetSize(Size)
 
 	st_ch := make(chan *farm.State)
 	go func() {
@@ -108,7 +109,7 @@ func florister() error {
 		}
 	}()
 
-	if err := fl.Run(ctx, Size, st_ch); err != nil {
+	if err := fl.Run(ctx, st_ch); err != nil {
 		return err
 	}
 	return nil
