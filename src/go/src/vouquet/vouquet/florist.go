@@ -9,5 +9,7 @@ import (
 )
 
 type Florist interface {
-	Run(context.Context, float64, <- chan *farm.State) error
+	Run(context.Context, <- chan *farm.State) error
+	SetSize(float64)
+	Action(*farm.State) error
 }

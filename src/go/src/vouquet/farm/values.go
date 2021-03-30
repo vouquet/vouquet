@@ -9,9 +9,15 @@ const (
 
 var (
 	SOIL_ALL []string
+
+	DEFAULT_OpeOption *OpeOption
 )
 
 func init() {
 	SOIL_ALL = []string{}
 	SOIL_ALL = append(SOIL_ALL, SOIL_GMO)
+
+	DEFAULT_OpeOption = &OpeOption{
+		Stream: true,
+	}
 }

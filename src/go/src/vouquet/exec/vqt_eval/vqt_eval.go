@@ -4,7 +4,6 @@ import (
 	"os"
 	"fmt"
 	"flag"
-	"sync"
 	"time"
 	"context"
 	"strconv"
@@ -44,9 +43,7 @@ func (self *logger) WriteMsg(s string, msg ...interface{}) {
 }
 
 func (self *logger) WriteErr(s string, msg ...interface{}) {
-	if VeryDetail || Detail {
-		fmt.Fprintf(os.Stderr, "[ERROR]" + s + "\n" , msg...)
-	}
+	fmt.Fprintf(os.Stderr, "[ERROR]" + s + "\n" , msg...)
 }
 
 func (self *logger) WriteDebug(s string, msg ...interface{}) {
@@ -73,7 +70,6 @@ func eval() error {
 
 	fls := make(map[string]vouquet.Florist)
 	pls := make(map[string]farm.Planter)
-	chan_list := make(map[string]chan *farm.State)
 	for _, name := range florist.MEMBERS {
 
 		p := farm.NewTestPlanter(Seed, log)
@@ -81,49 +77,38 @@ func eval() error {
 		if err != nil {
 			return err
 		}
+		fl.SetSize(Size)
 
 		fls[name] = fl
 		pls[name] = p
-		chan_list[name] = make(chan *farm.State)
 	}
 
 	var head time.Time
 	var tail time.Time
 
-	go func() {
-		t_status, err := r.GetStatus(Soil, Seed, Start, End)
-		if err != nil {
-			return
-		}
-		log.WriteMsg("read size: %v", len(t_status))
-
-		head = t_status[0].Date()
-		tail = t_status[len(t_status)-1].Date()
-
-		for _, t_state := range t_status {
-			for _, s_chan := range chan_list {
-				s_chan <- t_state
-			}
-		}
-
-		for _, s_chan := range chan_list {
-			close(s_chan)
-		}
-	}()
-
-	wg := new(sync.WaitGroup)
-	for name, fl := range fls {
-		wg.Add(1)
-
-		go func(name string, fl vouquet.Florist) {
-			defer wg.Done()
-
-			if err := fl.Run(ctx, Size, chan_list[name]); err != nil {
-				log.WriteErr("cannot run %s, %s", name, err)
-			}
-		}(name, fl)
+	t_status, err := r.GetStatus(Soil, Seed, Start, End)
+	if err != nil {
+		return err
 	}
-	wg.Wait()
+	log.WriteMsg("read size: %v", len(t_status))
+
+	head = t_status[0].Date()
+	tail = t_status[len(t_status)-1].Date()
+
+	for _, t_state := range t_status {
+		for _, p := range pls {
+			tp, ok := p.(*farm.TestPlanter)
+			if !ok {
+				log.WriteErr("cannot convert test planter")
+				continue
+			}
+
+			tp.SetState(t_state)
+		}
+		for _, fl := range fls {
+			fl.Action(t_state)
+		}
+	}
 
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	fmt.Printf("vqt_eval report\n")
