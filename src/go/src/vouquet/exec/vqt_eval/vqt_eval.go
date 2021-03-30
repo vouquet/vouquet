@@ -72,7 +72,7 @@ func eval() error {
 	pls := make(map[string]farm.Planter)
 	for _, name := range florist.MEMBERS {
 
-		p := farm.NewTestPlanter(Seed, log) //nowstatus
+		p := farm.NewTestPlanter(Seed, log)
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
