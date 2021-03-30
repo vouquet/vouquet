@@ -31,34 +31,30 @@ Vouquet 公開仕様
 ## Florist ライブラリ要求仕様
 
 1. パッケージ名が、florist(`source L1: package florist`) であること
-2. 定数 `florist.MEMBERS []string` を有し、全てのflorist名がsliceに格納されていること
-3. 関数 `NewFlorist(name string, p farm.Planter, init_status []*farm.State, log logger) (vouquet.Florist, error)` を有すること
-	* 引数
-		1. `name` は、定数florist.MEMBERS に含まれる1つを渡します
-		2. `planter` は、任意のfarm.Planter を渡します
-		3. `init_status` は、過去1時間の状態を渡します。過去データを使い判断軸を生成する場合利用できます
-		4. `log` は、farm.loggerが渡されます。各種実行ファイル上で安全に出力する為の構造体です。出力を行う場合はこちらを使うことを推奨します
-	* 動作
-		* `name`でswitch等をおこない、任意のvouquet.Floristに対応するfloristを返却してください
+2. パッケージ内に、グローバル変数 `MEMBERS map[string]func() base.Florist` を有し、全てのflorist名とNew関数がmapに格納されていること
+	* `base.Florist` のインタフェースに合致しないものはbuildで弾かれます
+* [サンプル](../../sample/lib/florist/florist.go)
 
-#### vouquet.Florist への対応説明
+#### base.Florist の対応説明
 * 説明
-	* `vouquet.Florist`では、`Run(context.Context, float64, <- chan *farm.State) error`を有すること
-		* 引数
-			* `context.Context`
-				* 停止時の`context.Context.Done()` を共有します
-			* `float64`
-				* 取引のサイズを共有します。1BTC毎に取引をする想定の場合、1を共有します
-			* `<- chan *farm.State`
-				* 最短1秒ごとに現在の`farm.State`を共有するchannelを共有します
-* 動作要求仕様
-	* `chan *farm.State`から、現在の値を受け取り、`farm.Planter`に対して取引を行うこと
-	* 動作フロー概要
-		1. `chan *farm.State`から`farm.State`を取得
-		2. `farm.Planter.SetSeed`によって、ポジションの作成
-		3. `farm.Planter.ShowSproutList`によって、作成したポジション一覧の確認
-		4. `farm.Planter.Harvest`によって、ポジションの利確を行う
-	* `farm.Planter`で取引に利用する代表的なインタフェース
+	* `base.Florist` インタフェースにハマる構造体を定義することで、Vouquetのロジックとして利用できます
+		* `base.FloristBase` を組み込みインポートすることで、大体の関数は用意されます
+			* 組み込みインポートをするので、個別のバッファやフラグを用意する場合、子構造体として格納することをお勧めします
+		* 開発者が個別に定義する必要があるものは以下の2つのみです
+			* `Init([]*farm.State) error`
+				* 初期データの生成や計算を想定しています
+				* `func main()`のgoroutineのスレッドで動きます
+				* 起動直後に呼ばれます
+				* 起動地点から、1時間前のデータが時間昇順で渡されます
+			* `Action(*farm.State) error`
+				* 実際の取引を行う内容が作成されることを想定しています
+				* `func main()`以外のgoroutineのスレッドで動きます
+				* メインではない、goroutineのスレッドで動きます
+				* 概ね1秒に1件の最新のデータを渡し、関数が呼ばれます
+					* 取引所が停止した場合、停止時間分のデータが受信できない（例えばいきなり10時間後のデータが渡されるなど）ことが想定されます
+					* 計算前には、取得時間の確認をお勧めします
+* 取引を行う際に利用する関数
+	* `<your florist>.Planter()`で取得できる、`farm.Planter`。取引に利用するインタフェース
 		* `farm.Planter.SetSeed(seed_name string, size float64, opt *OpeOption) error`
 			* 引数 seed_name では、仮想通貨名を渡します
 			* 引数 size では、取引のサイズを渡します。`vouquet.Florist.Run`の、`size`を渡すことを想定しています
@@ -67,6 +63,10 @@ Vouquet 公開仕様
 		* `farm.Planter.Harvest(sp *Sprout, opt *OpeOption)`
 			* 引数 sp では、利確する、`farm.Sprout`を 渡してください
 			* 引数 opt では、実行のオプションを指定します
+	* `<your florist>.Size()`で取得できる、`サイズ(float64)`
+		* バイナリの実行時に、引数で指定するサイズが渡されるようになります
+		* `farm.Planter.SetSeed`をする際の`size` で活用することを想定しています
+			* `size`を任意のタイミングで分割したいケースを想定し、`size`は利用者側が指定できるようにしています
 	* `farm.OpeOption` に存在する要素
 		* `Price`
 			* 実行時の値段を指定します。`Stream: true`時は無視されます
@@ -74,4 +74,15 @@ Vouquet 公開仕様
 			* 実行時に指値か、成行を指定します。`Stream: true`で成行です
 			* `v0.0.3`現在、指値未対応で、全ての注文が成行です
 				* 進捗については、[https://github.com/vouquet/vouquet/issues/38](https://github.com/vouquet/vouquet/issues/38) をご覧ください
-
+* その他
+	* `<your florist>.Logger()`で取得できる、`base.Logger`
+		* 並列動作で呼ばれることや、上段のWrapperが拡張されうるので、`import log`のようなログの出力は非推奨です。本構造体を利用ください
+		* 利用できる出力は以下です
+			* `WriteErr(string, ...interface{})`
+				* stderrに出力します
+			* `WriteMsg(string, ...interface{})`
+				* stdoutに出力します
+				* `vqt_eval`では、`-v`で出力されます
+			* `WriteDebug(string, ...interface{})`
+				* stdoutに出力します
+				* `vqt_eval`では、`-vv`で出力されます
