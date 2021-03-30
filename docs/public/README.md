@@ -55,8 +55,8 @@ Vouquet 公開仕様
 					* 計算前には、取得時間の確認をお勧めします
 * 取引を行う際に利用する関数
 	* `<your florist>.Planter()`で取得できる、`farm.Planter`。取引に利用するインタフェース
-		* `farm.Planter.SetSeed(seed_name string, size float64, opt *OpeOption) error`
-			* 引数 seed_name では、仮想通貨名を渡します
+		* `farm.Planter.SetSeed(o_type string, size float64, opt *OpeOption) error`
+			* 引数 o_type では、売り/買いを指定します。パラメータは、`farm.TYPE_BUY`, `farm.TYPE_SELL`を指定ください
 			* 引数 size では、取引のサイズを渡します。`vouquet.Florist.Run`の、`size`を渡すことを想定しています
 			* 引数 opt では、実行のオプションを指定します
 		* `farm.Planter.ShowSproutList() ([]*farm.Sprout, error)`
