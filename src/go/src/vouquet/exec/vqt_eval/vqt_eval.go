@@ -96,20 +96,18 @@ func eval() error {
 	tail = t_status[len(t_status)-1].Date()
 
 	for _, t_state := range t_status {
-		func(s farm.State) {
-			for _, p := range pls {
-				tp, ok := p.(*farm.TestPlanter)
-				if !ok {
-					log.WriteErr("cannot convert test planter")
-					return
-				}
+		for _, p := range pls {
+			tp, ok := p.(*farm.TestPlanter)
+			if !ok {
+				log.WriteErr("cannot convert test planter")
+				continue
+			}
 
-				tp.SetState(&s)
-			}
-			for _, fl := range fls {
-				fl.Action(&s)
-			}
-		}(*t_state)
+			tp.SetState(t_state)
+		}
+		for _, fl := range fls {
+			fl.Action(t_state)
+		}
 	}
 
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
