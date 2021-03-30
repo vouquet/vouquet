@@ -16,7 +16,8 @@ Vouquet
 	* ライブラリの動作保証も行っておりません
 
 ### インストール手順
-1. [公開仕様](./public/README.md## Florist 開発/リリース 方法)
+1. [公開仕様](./public/README.md## Florist 開発/リリース 方法) を確認し、binaryを用意する
+2. [Vouquetのサーバインストール手順](./ope/install.md)
 
 
 ### レポート方法
