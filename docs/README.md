@@ -15,6 +15,10 @@ Vouquet
 * Vouquet を利用した取引に関しては自己責任です
 	* ライブラリの動作保証も行っておりません
 
+### インストール手順
+1. [公開仕様](./public/README.md## Florist 開発/リリース 方法)
+
+
 ### レポート方法
 
 * 質問や報告がある場合、[Issueの一覧](https://github.com/vouquet/vouquet/issues) に同じ質問がないことを確認してから、[Issue作成](https://github.com/vouquet/vouquet/issues/new)をしてください
