@@ -44,9 +44,7 @@ func (self *logger) WriteMsg(s string, msg ...interface{}) {
 }
 
 func (self *logger) WriteErr(s string, msg ...interface{}) {
-	if VeryDetail || Detail {
-		fmt.Fprintf(os.Stderr, "[ERROR]" + s + "\n" , msg...)
-	}
+	fmt.Fprintf(os.Stderr, "[ERROR]" + s + "\n" , msg...)
 }
 
 func (self *logger) WriteDebug(s string, msg ...interface{}) {
@@ -76,7 +74,7 @@ func eval() error {
 	chan_list := make(map[string]chan *farm.State)
 	for _, name := range florist.MEMBERS {
 
-		p := farm.NewTestPlanter(Seed, log)
+		p := farm.NewTestPlanter(Seed, log) //nowstatus
 		fl, err := florist.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
@@ -101,9 +99,20 @@ func eval() error {
 		tail = t_status[len(t_status)-1].Date()
 
 		for _, t_state := range t_status {
-			for _, s_chan := range chan_list {
-				s_chan <- t_state
-			}
+			func(s farm.State) {
+				for _, p := range pls {
+					tp, ok := p.(*farm.TestPlanter)
+					if !ok {
+						log.WriteErr("cannot convert test planter")
+						return
+					}
+
+					tp.SetState(&s)
+				}
+				for _, s_chan := range chan_list {
+					s_chan <- &s
+				}
+			}(*t_state)
 		}
 
 		for _, s_chan := range chan_list {

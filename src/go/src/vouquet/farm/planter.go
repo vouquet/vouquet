@@ -11,11 +11,16 @@ import (
 	"github.com/vouquet/shop"
 )
 
+type OpeOption struct {
+	Price  float64
+	Stream bool //TODO: not use false ("not stream"), only stream order.
+}
+
 type Planter interface {
 	Seed() string
-	SetSeed(string, float64, float64) error //TODO: not use rate, only stream order.
+	SetSeed(string, float64, *OpeOption) error
 	ShowSproutList() ([]*Sprout, error)
-	Harvest(*Sprout, float64) error //TODO: not use rate, only stream order.
+	Harvest(*Sprout, *OpeOption) error
 	Win()     float64
 	WinCnt()  int64
 	Lose()    float64
@@ -76,21 +81,25 @@ func (self *Flowerpot) Seed() string {
 	return self.seed
 }
 
-func (self *Flowerpot) SetSeed(o_type string, size float64, price float64) error {
+func (self *Flowerpot) SetSeed(o_type string, size float64, opt *OpeOption) error {
 	self.lock()
 	defer self.unlock()
+
+	if opt == nil {
+		opt = DEFAULT_OpeOption
+	}
 
 	if err := self.soil.OrderStreamIn(o_type, self.seed, size); err != nil {
 		return err
 	}
 	sp := &Sprout{
 		date: time.Now(),
-		price: price,
+		price: opt.Price,
 		size: size,
 		o_type: o_type,
 	}
 
-	self.log.WriteMsg("[SetSeed] %s, size: %.3f, price: %.3f", o_type, size, price)
+	self.log.WriteMsg("[SetSeed] %s, size: %.3f, price: %.3f", o_type, size, opt.Price)
 
 	self.sp_list = append(self.sp_list, sp)
 	return nil
@@ -179,9 +188,13 @@ func (self *Flowerpot) updateSproutList(always_update bool) error {
 	return nil
 }
 
-func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
+func (self *Flowerpot) Harvest(h_sp *Sprout, opt *OpeOption) error {
 	self.lock()
 	defer self.unlock()
+
+	if opt == nil {
+		opt = DEFAULT_OpeOption
+	}
 
 	if h_sp.pos == nil {
 		for i, sp := range self.sp_list {
@@ -201,9 +214,9 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 	var yield float64
 	switch h_sp.OrderType() {
 	case TYPE_SELL:
-		yield = (h_sp.Price() * h_sp.Size()) - (price * h_sp.Size())
+		yield = (h_sp.Price() * h_sp.Size()) - (opt.Price * h_sp.Size())
 	case TYPE_BUY:
-		yield = (price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
+		yield = (opt.Price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
 	default:
 		return fmt.Errorf("unkown operation, '%s'", h_sp.OrderType())
 	}
@@ -226,7 +239,7 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, price float64) error {
 	}
 
 	self.log.WriteMsg("[Harvest] %s, size: %.3f, price: %.3f -> %.3f, win: %.3f(/%.3f)",
-							h_sp.OrderType(), h_sp.Size(), h_sp.Price(), price,
+							h_sp.OrderType(), h_sp.Size(), h_sp.Price(), opt.Price,
 							yield, self.win + self.lose)
 	return nil
 }
@@ -364,14 +377,16 @@ func (self *testPosition) OrderType() string {
 }
 
 type TestPlanter struct {
-	seed     string
+	seed      string
 
-	sp_list    []*Sprout
+	now_state *State
 
-	win      float64
-	win_cnt  int64
-	lose     float64
-	lose_cnt int64
+	sp_list   []*Sprout
+
+	win       float64
+	win_cnt   int64
+	lose      float64
+	lose_cnt  int64
 
 	log     logger
 	mtx     *sync.Mutex
@@ -390,18 +405,32 @@ func (self *TestPlanter) Seed() string {
 	return self.seed
 }
 
-func (self *TestPlanter) SetSeed(o_type string, size float64, price float64) error {
+func (self *TestPlanter) SetState(state *State) {
 	self.lock()
 	defer self.unlock()
 
+	self.now_state = state
+}
+
+func (self *TestPlanter) SetSeed(o_type string, size float64, opt *OpeOption) error {
+	self.lock()
+	defer self.unlock()
+
+	if opt == nil {
+		opt = DEFAULT_OpeOption
+	}
+
+	price := (self.now_state.Ask() + self.now_state.Bid()) / float64(2)
 	tpos := newTestPosition(o_type, self.seed, size, price)
 	sp := &Sprout{
-		date: time.Now(),
-		price: price,
+		date: self.now_state.Date(),
+		price: opt.Price,
 		size: size,
 		o_type: o_type,
 		pos: tpos,
 	}
+
+	self.log.WriteDebug("[SetSeed] %s, size: %.3f, price: %.3f", o_type, size, price)
 
 	self.sp_list = append(self.sp_list, sp)
 	return nil
@@ -417,12 +446,16 @@ func (self *TestPlanter) ShowSproutList() ([]*Sprout, error) {
 	return c_sp_list, nil
 }
 
-func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
+func (self *TestPlanter) Harvest(sp *Sprout, opt *OpeOption) error {
 	self.lock()
 	defer self.unlock()
 
+	if opt == nil {
+		opt = DEFAULT_OpeOption
+	}
+
 	in_val := sp.Price()
-	out_val := price
+	out_val := (self.now_state.Ask() + self.now_state.Bid()) / float64(2)
 	var yield float64
 	switch sp.OrderType() {
 	case shop.ORDER_TYPE_BUY:
@@ -452,8 +485,10 @@ func (self *TestPlanter) Harvest(sp *Sprout, price float64) error {
 	}
 	self.sp_list = sp_list
 
-	self.log.WriteMsg("Harvested(%s) orderIn: %f -> orderOut: %f, win: %f",
-							sp.OrderType(), in_val, out_val, yield)
+	t_fmt := "2006/01/02 15:04"
+	self.log.WriteDebug("[Harvested(%s)] orderIn: %f(%s) -> orderOut: %f(%s), win: %f",
+							sp.OrderType(), in_val, sp.CreateTime().Format(t_fmt),
+							out_val, self.now_state.Date().Format(t_fmt),  yield)
 	return nil
 }
 
