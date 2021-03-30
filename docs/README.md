@@ -16,7 +16,7 @@ Vouquet
 	* ライブラリの動作保証も行っておりません
 
 ### インストール手順
-1. [公開仕様](./public/README.md#florist-開発リリース-方法) を利用し、floristの開発やbuildを行う
+1. [公開仕様 ##Florist 開発/リリース 方法](./public/README.md#florist-開発リリース-方法) を利用し、floristの開発やbuildを行う
 2. [Vouquetのサーバインストール手順](./ope/install.md)
 
 ### レポート方法
