@@ -12,10 +12,7 @@ import (
 
 import (
 	"vouquet/farm"
-)
-
-import (
-	"github.com/vouquet/florist"
+	"vouquet/vouquet"
 )
 
 var (
@@ -66,7 +63,7 @@ func florister() error {
 	if err != nil {
 		return err
 	}
-	fl, err := florist.NewFlorist(Name, pl, init_status, log)
+	fl, err := vouquet.NewFlorist(Name, pl, init_status, log)
 	if err != nil {
 		return err
 	}

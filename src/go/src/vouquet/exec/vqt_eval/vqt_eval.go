@@ -12,10 +12,6 @@ import (
 )
 
 import (
-	"github.com/vouquet/florist"
-)
-
-import (
 	"vouquet/farm"
 	"vouquet/vouquet"
 )
@@ -68,12 +64,12 @@ func eval() error {
 		return err
 	}
 
-	fls := make(map[string]vouquet.Florist)
+	fls := make(map[string]*vouquet.Florist)
 	pls := make(map[string]farm.Planter)
-	for _, name := range florist.MEMBERS {
+	for _, name := range vouquet.FLORIST_NAMES {
 
 		p := farm.NewTestPlanter(Seed, log)
-		fl, err := florist.NewFlorist(name, p, status, log)
+		fl, err := vouquet.NewFlorist(name, p, status, log)
 		if err != nil {
 			return err
 		}
@@ -114,7 +110,7 @@ func eval() error {
 	fmt.Printf("vqt_eval report\n")
 	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
-	for _, name := range florist.MEMBERS {
+	for _, name := range vouquet.FLORIST_NAMES {
 		pl, ok := pls[name]
 		if !ok {
 			fmt.Printf("%s : was not run test.", name)
@@ -207,4 +203,3 @@ func main() {
 	}
 
 }
-
