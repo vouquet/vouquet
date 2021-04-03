@@ -3,9 +3,11 @@ DC=docker-compose
 
 CURRENT_UID := $(shell id -u)
 CURRENT_GID := $(shell id -g)
+BUILD_VERSION := $(shell git describe --tags)
 
 export CURRENT_UID
 export CURRENT_GID
+export BUILD_VERSION
 
 SRCS := $(shell find . -type f)
 

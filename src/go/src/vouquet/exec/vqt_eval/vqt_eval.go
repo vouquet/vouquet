@@ -17,6 +17,9 @@ import (
 )
 
 var (
+	Version string
+	SeeVersion bool
+
 	Cpath    string
 
 	Start  time.Time
@@ -137,16 +140,18 @@ func init() {
 	var very_detail bool
 	var detail bool
 	var c_path string
+	var see_version bool
 	flag.StringVar(&c_path, "c", "./vouquet.conf", "config path.")
 	flag.BoolVar(&detail, "v", false, "display detail.")
 	flag.BoolVar(&very_detail, "vv", false, "display very very detail.")
+	flag.BoolVar(&see_version, "version", false, "display version.")
 	flag.Parse()
 
 	if flag.NArg() < 5 {
-		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
+		die("usage : vqt_eval [-c <config path>] [-version] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
 	}
 	if flag.NFlag() < 0 {
-		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
+		die("usage : vqt_eval [-c <config path>] [-version] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
 	}
 
 	st_s := flag.Arg(0)
@@ -186,6 +191,7 @@ func init() {
 		die("cannot set empty value of soil.")
 	}
 
+	SeeVersion = see_version
 	Detail = detail
 	VeryDetail = very_detail
 	Cpath = c_path
@@ -198,6 +204,11 @@ func init() {
 }
 
 func main() {
+	if SeeVersion {
+		fmt.Printf("Version: vqt_eval %s\n", Version)
+		return
+	}
+
 	if err := eval(); err != nil {
 		die("%s", err)
 	}

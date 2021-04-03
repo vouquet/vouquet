@@ -7,7 +7,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GODEP=$(GOENV) dep
 
-BUILD_FLGS=-a -tags netgo -installsuffix netgo -ldflags='-extldflags="static"'
+BUILD_FLGS=-a -tags netgo -installsuffix netgo -ldflags='-extldflags="static" -X main.Version=$(BUILD_VERSION)'
 
 SRCS := $(shell find . -name '*.go' -type f)
 BINS := $(shell test -d ./bin && find ./bin/ -type f)

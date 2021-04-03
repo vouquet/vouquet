@@ -6,3 +6,5 @@ services:
         tty: true
         volumes:
             - ../src/go:/go/src
+        environment:
+            - BUILD_VERSION
