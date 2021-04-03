@@ -16,7 +16,14 @@ import (
 	"vouquet/vouquet"
 )
 
+const (
+	SELF_NAME string = "vqt_eval"
+	USAGE string = "[-version] [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>"
+)
+
 var (
+	Version string
+
 	Cpath    string
 
 	Start  time.Time
@@ -107,7 +114,7 @@ func eval() error {
 	}
 
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
-	fmt.Printf("vqt_eval report\n")
+	fmt.Printf("vqt_eval %s report\n", Version)
 	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	for _, name := range vouquet.FLORIST_NAMES {
@@ -137,16 +144,23 @@ func init() {
 	var very_detail bool
 	var detail bool
 	var c_path string
+	var see_version bool
 	flag.StringVar(&c_path, "c", "./vouquet.conf", "config path.")
 	flag.BoolVar(&detail, "v", false, "display detail.")
 	flag.BoolVar(&very_detail, "vv", false, "display very very detail.")
+	flag.BoolVar(&see_version, "version", false, "display version.")
 	flag.Parse()
 
+	if see_version {
+		fmt.Printf("Version: %s %s\n", SELF_NAME, Version)
+		os.Exit(0)
+	}
+
 	if flag.NArg() < 5 {
-		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 	if flag.NFlag() < 0 {
-		die("usage : vqt_eval [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 
 	st_s := flag.Arg(0)
@@ -201,5 +215,4 @@ func main() {
 	if err := eval(); err != nil {
 		die("%s", err)
 	}
-
 }

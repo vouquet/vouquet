@@ -15,7 +15,14 @@ import (
 	"vouquet/vouquet"
 )
 
+const (
+	SELF_NAME string = "vqt_florister"
+	USAGE string = "[-version] [-c <config path>] <NAMEofFlorist> <SEED> <SOIL> <SIZE>"
+)
+
 var (
+	Version string
+
 	Cpath  string
 
 	Name   string
@@ -106,6 +113,7 @@ func florister() error {
 		}
 	}()
 
+	log.WriteMsg("Start %s %s", SELF_NAME, Version)
 	if err := fl.Run(ctx, st_ch); err != nil {
 		return err
 	}
@@ -119,11 +127,18 @@ func die(s string, msg ...interface{}) {
 
 func init() {
 	var c_path string
+	var see_version bool
 	flag.StringVar(&c_path, "c", "./vouquet.conf", "config path.")
+	flag.BoolVar(&see_version, "version", false, "display version.")
 	flag.Parse()
 
+	if see_version {
+		fmt.Printf("Version: %s %s\n", SELF_NAME, Version)
+		os.Exit(0)
+	}
+
 	if flag.NArg() < 4 {
-		die("usage : vqt_florister [-c <config path>] <NAMEofFlorist> <SEED> <SOIL> <SIZE>")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 
 	name := flag.Arg(0)

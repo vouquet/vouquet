@@ -14,10 +14,14 @@ import (
 )
 
 const (
+	SELF_NAME string = "vqt_noticer"
+	USAGE string = "[-version] [-c <config path>] <Path of Credentical Twitter> <SEED> <SOIL>"
+
 	TW_WAIT_SEC int64 = 5
 )
 
 var (
+	Version string
 	Cpath   string
 	TwCpath string
 	Seed  string
@@ -66,6 +70,7 @@ func noticer() error {
 		return err
 	}
 
+	log.WriteMsg("Start %s %s", SELF_NAME, Version)
 	var date_str string = time.Now().Format("2006/01/02")
 	var date_yield float64
 	var total_yield float64
@@ -138,11 +143,18 @@ func die(s string, msg ...interface{}) {
 
 func init() {
 	var c_path string
+	var see_version bool
 	flag.StringVar(&c_path, "c", "./vouquet.conf", "config path.")
+	flag.BoolVar(&see_version, "version", false, "display version.")
 	flag.Parse()
 
+	if see_version {
+		fmt.Printf("Version: %s %s\n", SELF_NAME, Version)
+		os.Exit(0)
+	}
+
 	if flag.NArg() < 3 {
-		die("usage : vqt_florister [-c <config path>] <Path of Credentical Twitter> <SEED> <SOIL>")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 
 	tw_cpath := flag.Arg(0)
