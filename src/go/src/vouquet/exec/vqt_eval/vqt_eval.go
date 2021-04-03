@@ -16,9 +16,13 @@ import (
 	"vouquet/vouquet"
 )
 
+const (
+	SELF_NAME string = "vqt_eval"
+	USAGE string = "[-version] [-c <config path>] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>"
+)
+
 var (
 	Version string
-	SeeVersion bool
 
 	Cpath    string
 
@@ -110,7 +114,7 @@ func eval() error {
 	}
 
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
-	fmt.Printf("vqt_eval report\n")
+	fmt.Printf("vqt_eval %s report\n", Version)
 	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
 	for _, name := range vouquet.FLORIST_NAMES {
@@ -147,11 +151,16 @@ func init() {
 	flag.BoolVar(&see_version, "version", false, "display version.")
 	flag.Parse()
 
+	if see_version {
+		fmt.Printf("Version: %s %s\n", SELF_NAME, Version)
+		os.Exit(0)
+	}
+
 	if flag.NArg() < 5 {
-		die("usage : vqt_eval [-c <config path>] [-version] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 	if flag.NFlag() < 0 {
-		die("usage : vqt_eval [-c <config path>] [-version] [-v|-vv] <start-date(yyyy/mm/dd)> <end-date(yyyy/mm/dd)> <SEED> <SOIL> <SIZE>")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 
 	st_s := flag.Arg(0)
@@ -191,7 +200,6 @@ func init() {
 		die("cannot set empty value of soil.")
 	}
 
-	SeeVersion = see_version
 	Detail = detail
 	VeryDetail = very_detail
 	Cpath = c_path
@@ -204,13 +212,7 @@ func init() {
 }
 
 func main() {
-	if SeeVersion {
-		fmt.Printf("Version: vqt_eval %s\n", Version)
-		return
-	}
-
 	if err := eval(); err != nil {
 		die("%s", err)
 	}
-
 }

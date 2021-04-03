@@ -13,7 +13,13 @@ import (
 	"vouquet/farm"
 )
 
+const (
+	SELF_NAME string = "vqt_registrar"
+	USAGE string = "[-version] [-c <config path>]"
+)
+
 var (
+	Version string
 	Cpath string
 )
 
@@ -82,6 +88,8 @@ func registrar() error {
 			}
 		}()
 	}
+
+	log.WriteMsg("Start %s %s", SELF_NAME, Version)
 	wg.Wait()
 	return nil
 }
@@ -93,11 +101,18 @@ func die(s string, msg ...interface{}) {
 
 func init() {
 	var c_path string
+	var see_version bool
 	flag.StringVar(&c_path, "c", "./vouquet.conf", "config path.")
+	flag.BoolVar(&see_version, "version", false, "display version.")
 	flag.Parse()
 
+	if see_version {
+		fmt.Printf("Version: %s %s\n", SELF_NAME, Version)
+		os.Exit(0)
+	}
+
 	if flag.NArg() < 0 {
-		die("usage : vqt_registrar [-c <config path>]")
+		die("usage : %s %s", SELF_NAME, USAGE)
 	}
 
 	if c_path == "" {
