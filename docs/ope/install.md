@@ -18,6 +18,8 @@ Vouquetのサーバインストール手順
 	$ CREATE DATABASE IF NOT EXISTS vouquet CHARACTER SET utf8 COLLATE utf8_general_ci;
 	$ CREATE USER 'vouquet'@'localhost' identified by '<your password>;
 	$ GRANT ALL PRIVILEGES ON vouquet.* to 'vouquet'@'localhost';
+	$ GRANT RELOAD ON *.* TO 'vouquet'@'localhost';
+	$ FLUSH PRIVILEGES;
 	```
 
 ## 2. 動作アカウントの作成
