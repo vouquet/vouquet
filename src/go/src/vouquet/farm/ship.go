@@ -7,12 +7,12 @@ import (
 )
 
 import (
-	"github.com/vouquet/shop"
+	"vouquet/shop"
 )
 
 type ShipRecorder struct {
 	seed string
-	soil   shop.Shop
+	soil   shop.Handler
 
 	p_idx  map[string]int64
 	f_idx  map[string]int64
@@ -34,7 +34,7 @@ func OpenShipRecorder(soil_name string, seed string, c_path string, ctx context.
 	if err != nil {
 		return nil, err
 	}
-	s, err := openShop(soil_name, c, c_ctx)
+	s, err := shop.New(soil_name, c, c_ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -1,22 +1,19 @@
 package farm
 
-const (
-	TYPE_SELL string = "SELL"
-	TYPE_BUY  string = "BUY"
-
-	SOIL_GMO string = "coinzcom"
+import (
+	"vouquet/shop"
 )
 
 var (
-	SOIL_ALL []string
+	SOIL_ALL = shop.NAMES
+
+	TYPE_BUY = shop.TYPE_BUY
+	TYPE_SELL = shop.TYPE_SELL
 
 	DEFAULT_OpeOption *OpeOption
 )
 
 func init() {
-	SOIL_ALL = []string{}
-	SOIL_ALL = append(SOIL_ALL, SOIL_GMO)
-
 	DEFAULT_OpeOption = &OpeOption{
 		Stream: true,
 	}

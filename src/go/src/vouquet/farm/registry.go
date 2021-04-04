@@ -10,6 +10,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+import (
+	"vouquet/shop"
+)
+
 type State struct {
 	ask  float64
 	bid  float64
@@ -96,14 +100,24 @@ func (self *Registry) GetStatus(soil string, seed string, st time.Time, et time.
 	self.lock()
 	defer self.unlock()
 
-	return self.do_sql_getStatus(soil, seed, st, et)
+	key, err := shop.GetKey(soil, seed)
+	if err != nil {
+		return nil, err
+	}
+
+	return self.do_sql_getStatus(soil, key, st, et)
 }
 
 func (self *Registry) GetLastState(soil string, seed string) (*State, error) {
 	self.lock()
 	defer self.unlock()
 
-	return self.do_sql_getLastState(soil, seed)
+	key, err := shop.GetKey(soil, seed)
+	if err != nil {
+		return nil, err
+	}
+
+	return self.do_sql_getLastState(soil, key)
 }
 
 func (self *Registry) checktbl() error {

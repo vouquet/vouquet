@@ -1,50 +1,41 @@
 package shop
 
 import (
-	"time"
+	"fmt"
+	"context"
 )
 
 const (
-	ORDER_TYPE_BUY string = "BUY"
-	ORDER_TYPE_SELL string = "SELL"
+	TYPE_SELL string = "SELL"
+	TYPE_BUY  string = "BUY"
 )
 
-type Shop interface {
+var (
+	NAMES []string = []string{GMOCOIN}
+)
+
+type Handler interface {
 	GetRate()   (map[string]Rate, error)
 	GetPositions(string) ([]Position, error)
 	GetFixes(string) ([]Fix, error)
-	OrderStreamIn(string, string, float64) error //type, symbol, size
+	OrderStreamIn(string, string, float64) error
 	OrderStreamOut(Position) error
+//	Order(o_type, *Symbol, float64)
+//	OrderFix
 
-
-	Close() error
+	Release() error //Close() error//TODO: release
 }
 
-type Position interface {
-	Id()     string
-	Symbol() string
-	Size()   float64
-	Price()  float64
-	OrderType()   string
-}
-
-type Fix interface {
-	Id()        string
-	Symbol()    string
-	OrderType() string
-	Size()      float64
-	Price()     float64
-	Yield()     (float64, error)
-	Date()      (time.Time, error)
-}
-
-type Rate interface {
-	Ask()       float64
-	Bid()       float64
-	High()      float64
-	Last()      float64
-	Low()       float64
-	Symbol()    string
-	Time()      time.Time
-	Volume()    float64
+func New(shop_name string, conf Conf, ctx context.Context) (Handler, error) {
+	switch shop_name {
+	case GMOCOIN:
+		var c *GmoConf
+		if conf != nil {
+			c = conf.Gmo()
+		}
+		return openGmo(c, ctx)
+	default:
+		break
+	}
+	return nil, fmt.Errorf("undefined name of shop. '%s'", shop_name)
 }
