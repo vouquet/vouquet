@@ -22,7 +22,7 @@ const (
 
 func GetKey(shop_name string, symbol_name string) (string, error) {
 	switch shop_name {
-	case GMOCOIN:
+	case NAME_GMOCOIN:
 		return getGmoKey(symbol_name)
 	default:
 		break

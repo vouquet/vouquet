@@ -9,10 +9,6 @@ import (
 	"github.com/vouquet/go-gmo-coin/gomocoin"
 )
 
-const (
-	GMOCOIN string = "coinzcom"
-)
-
 var (
 	Symbol2Gmo map[string]string
 	Mode2Gmo   map[string]string
