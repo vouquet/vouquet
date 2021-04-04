@@ -23,7 +23,7 @@ type Handler interface {
 //	Order(o_type, *Symbol, float64)
 //	OrderFix
 
-	Release() error //Close() error//TODO: release
+	Release() error
 }
 
 func New(shop_name string, conf Conf, ctx context.Context) (Handler, error) {
