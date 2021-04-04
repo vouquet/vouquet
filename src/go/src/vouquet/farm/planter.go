@@ -213,9 +213,9 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, opt *OpeOption) error {
 
 	var yield float64
 	switch h_sp.OrderType() {
-	case shop.TYPE_SELL:
+	case TYPE_SELL:
 		yield = (h_sp.Price() * h_sp.Size()) - (opt.Price * h_sp.Size())
-	case shop.TYPE_BUY:
+	case TYPE_BUY:
 		yield = (opt.Price * h_sp.Size()) - (h_sp.Price() * h_sp.Size())
 	default:
 		return fmt.Errorf("unkown operation, '%s'", h_sp.OrderType())
@@ -458,9 +458,9 @@ func (self *TestPlanter) Harvest(sp *Sprout, opt *OpeOption) error {
 	out_val := (self.now_state.Ask() + self.now_state.Bid()) / float64(2)
 	var yield float64
 	switch sp.OrderType() {
-	case shop.TYPE_BUY:
+	case TYPE_BUY:
 		yield = (sp.Size() * out_val) - (sp.Size() * in_val)
-	case shop.TYPE_SELL:
+	case TYPE_SELL:
 		yield = (sp.Size() * in_val) - (sp.Size() * out_val)
 	default:
 		return fmt.Errorf("undefined type of order: '%s'", sp.OrderType())
