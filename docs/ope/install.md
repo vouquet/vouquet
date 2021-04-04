@@ -19,6 +19,7 @@ Vouquetのサーバインストール手順
 	$ CREATE USER 'vouquet'@'localhost' identified by '<your password>;
 	$ GRANT ALL PRIVILEGES ON vouquet.* to 'vouquet'@'localhost';
 	$ GRANT RELOAD ON *.* TO 'vouquet'@'localhost';
+	$ GRANT PROCESS ON *.* TO 'vouquet'@'localhost';
 	$ FLUSH PRIVILEGES;
 	```
 
