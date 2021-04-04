@@ -6,7 +6,7 @@ import (
 )
 
 import (
-	"github.com/vouquet/shop"
+	"vouquet/shop"
 )
 
 func NewThemograpy(soil_name string, ctx context.Context) (*Themography, error) {
@@ -15,7 +15,7 @@ func NewThemograpy(soil_name string, ctx context.Context) (*Themography, error) 
 	}
 	c_ctx, cancel := context.WithCancel(ctx)
 
-	s, err := openShop(soil_name, nil, c_ctx)
+	s, err := shop.New(soil_name, nil, c_ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func NewThemograpy(soil_name string, ctx context.Context) (*Themography, error) 
 
 type Themography struct {
 	soil_name  string
-	soil       shop.Shop
+	soil       shop.Handler
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -45,7 +45,7 @@ func (self *Themography) Status() (*Status, error) {
 
 func (self *Themography) Release() error {
 	self.cancel()
-	return self.soil.Close()
+	return self.soil.Release()
 }
 
 type Status struct {

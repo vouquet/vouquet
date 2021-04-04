@@ -8,7 +8,7 @@ import (
 )
 
 import (
-	"github.com/vouquet/shop"
+	"vouquet/shop"
 )
 
 type OpeOption struct {
@@ -29,7 +29,7 @@ type Planter interface {
 
 type Flowerpot struct {
 	seed  string
-	soil    shop.Shop
+	soil    shop.Handler
 	sp_list []*Sprout
 
 	win      float64
@@ -54,7 +54,7 @@ func NewFlowerpot(soil_name string, seed string, c_path string, ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
-	s, err := openShop(soil_name, c, c_ctx)
+	s, err := shop.New(soil_name, c, c_ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -458,9 +458,9 @@ func (self *TestPlanter) Harvest(sp *Sprout, opt *OpeOption) error {
 	out_val := (self.now_state.Ask() + self.now_state.Bid()) / float64(2)
 	var yield float64
 	switch sp.OrderType() {
-	case shop.ORDER_TYPE_BUY:
+	case TYPE_BUY:
 		yield = (sp.Size() * out_val) - (sp.Size() * in_val)
-	case shop.ORDER_TYPE_SELL:
+	case TYPE_SELL:
 		yield = (sp.Size() * in_val) - (sp.Size() * out_val)
 	default:
 		return fmt.Errorf("undefined type of order: '%s'", sp.OrderType())
