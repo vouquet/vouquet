@@ -15,6 +15,10 @@ const (
 	LTC2JPY_mgn  string = "LTC2JPY_mgn"
 	XRP2JPY_spt  string = "XRP2JPY_spt"
 	XRP2JPY_mgn  string = "XRP2JPY_mgn"
+	XLM2JPY_spt  string = "XLM2JPY_spt"
+	XLM2JPY_mgn  string = "XLM2JPY_mgn"
+	MONA2JPY_spt string = "MONA2JPY_spt"
+	MONA2JPY_mgn string = "MONA2JPY_mgn"
 
 	MODE_spot    string = "SPOT"
 	MODE_margin  string = "MARGIN"
@@ -24,6 +28,8 @@ func GetKey(shop_name string, symbol_name string) (string, error) {
 	switch shop_name {
 	case NAME_GMOCOIN:
 		return getGmoKey(symbol_name)
+	vase NAME_BITFLYER:
+		return getBitflyerKey(symbol_name)
 	default:
 		break
 	}
