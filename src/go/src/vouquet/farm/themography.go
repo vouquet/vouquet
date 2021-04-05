@@ -9,13 +9,18 @@ import (
 	"vouquet/shop"
 )
 
-func NewThemograpy(soil_name string, ctx context.Context) (*Themography, error) {
+func NewThemograpy(c_path string, soil_name string, ctx context.Context) (*Themography, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	c_ctx, cancel := context.WithCancel(ctx)
 
-	s, err := shop.New(soil_name, nil, c_ctx)
+	cfg, err := loadConfig(c_path)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := shop.New(soil_name, cfg, c_ctx)
 	if err != nil {
 		return nil, err
 	}

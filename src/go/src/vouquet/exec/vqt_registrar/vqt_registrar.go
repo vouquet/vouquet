@@ -52,7 +52,7 @@ func registrar() error {
 
 	wg := new(sync.WaitGroup)
 	for _, s := range farm.SOIL_ALL {
-		t, err := farm.NewThemograpy(s, ctx)
+		t, err := farm.NewThemograpy(Cpath, s, ctx)
 		if err != nil {
 			return err
 		}
