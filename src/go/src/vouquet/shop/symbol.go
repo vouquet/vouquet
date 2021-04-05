@@ -28,7 +28,7 @@ func GetKey(shop_name string, symbol_name string) (string, error) {
 	switch shop_name {
 	case NAME_GMOCOIN:
 		return getGmoKey(symbol_name)
-	vase NAME_BITFLYER:
+	case NAME_BITFLYER:
 		return getBitflyerKey(symbol_name)
 	default:
 		break

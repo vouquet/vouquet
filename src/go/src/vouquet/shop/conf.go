@@ -2,6 +2,7 @@ package shop
 
 type Conf interface {
 	Gmo() *GmoConf
+	Bitflyer() *BitflyerConf
 }
 
 type ConfBase struct {

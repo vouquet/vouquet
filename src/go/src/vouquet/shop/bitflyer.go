@@ -2,6 +2,7 @@ package shop
 
 import (
 	"fmt"
+	"time"
 	"context"
 )
 
@@ -38,18 +39,18 @@ type BitflyerConf struct {
 	Targets   []string
 }
 
-func openBitflyer(conf *BitflyerConf, ctx context.Context) (*BitflyerConf, error) {
+func openBitflyer(conf *BitflyerConf, ctx context.Context) (*BitflyerHandler, error) {
 	var key string
 	var secret string
 	targets := []string{}
 	if conf != nil {
 		key = conf.ApiKey
 		secret = conf.SecretKey
-		target = conf.Targets
+		targets = conf.Targets
 	}
 
 	original_targets := []string{}
-	for _, t := range target {
+	for _, t := range targets {
 		o_t, err := getBitflyerKey(t)
 		if err != nil {
 			return nil, err
@@ -68,40 +69,76 @@ func openBitflyer(conf *BitflyerConf, ctx context.Context) (*BitflyerConf, error
 }
 
 type BitflyerHandler struct {
-	shop *gomocoin.GoMOcoin
+	shop *bitflyer.Bitflyer
 
 	targets []string
 }
 
-func (self *BitflerHandler) GetRate() (map[string]Rate, error) {
-	rates, err := self.shop.GetRates(targets)
+func (self *BitflyerHandler) GetRate() (map[string]Rate, error) {
+	rates, err := self.shop.GetRates(self.targets)
 	if err != nil {
 		return nil, err
 	}
 
 	i_rates := make(map[string]Rate)
 	for key, val := range rates {
-		i_rates[key] = val
+		i_rates[key] = &BitflyerRate{original:val}
 	}
 	return i_rates, nil
 }
 
-func (self *BitflerHandler) GetPositions(symbol string) ([]Position, error) {
+func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 	return nil, fmt.Errorf("cannot use yet")
 }
 
-func (self *BitflerHandler) GetFixes(symbol string) ([]Fix, error) {
+func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 	return nil, fmt.Errorf("cannot use yet")
 }
 
-func (self *BitflerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
+func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
 	return fmt.Errorf("cannot use yet")
 }
 
-func (self *BitflerHandler) OrderStreamOut(pos Position) error {
+func (self *BitflyerHandler) OrderStreamOut(pos Position) error {
 	return fmt.Errorf("cannot use yet")
 }
 
-func (self *BitflerHandler) Release() error {
+func (self *BitflyerHandler) Release() error {
 	return self.shop.Close()
+}
+
+type BitflyerRate struct {
+	original *bitflyer.Rate
+}
+
+func (self *BitflyerRate) Ask() float64 {
+	return self.original.Ask()
+}
+
+func (self *BitflyerRate) Bid() float64 {
+	return self.original.Bid()
+}
+
+func (self *BitflyerRate) Last() float64 {
+	return self.original.Last()
+}
+
+func (self *BitflyerRate) Symbol() string {
+	return self.original.ProductCode()
+}
+
+func (self *BitflyerRate) Time() time.Time {
+	return self.original.Time()
+}
+
+func (self *BitflyerRate) Volume() float64 {
+	return self.original.Volume()
+}
+
+func (self *BitflyerRate) High() float64 {
+	return float64(0)
+}
+
+func (self *BitflyerRate) Low() float64 {
+	return float64(0)
 }
