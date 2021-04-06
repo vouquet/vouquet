@@ -30,8 +30,8 @@
   name = "github.com/vouquet/go-gmo-coin"
   version = "0.0.3"
 [[constraint]]
-  branch = "master"
-  name = "github.com/vouquet/shop"
+  name = "github.com/vouquet/go-bitflyer"
+  version = "0.0.1"
 
 [prune]
   go-tests = true
