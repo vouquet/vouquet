@@ -11,7 +11,7 @@ const (
 
 	NAME_GMOCOIN   string = "coinzcom"
 	NAME_BITFLYER  string = "bitflyer"
-//	NAME_COINCHECK string = "coincheck"
+	NAME_COINCHECK string = "coincheck"
 //	NAME_BINANCE   string = "binance"
 )
 
@@ -19,7 +19,7 @@ var (
 	NAMES []string = []string{
 			NAME_GMOCOIN,
 			NAME_BITFLYER,
-//			NAME_COINCHECK,
+			NAME_COINCHECK,
 //			NAME_BINANCE,
 		}
 )
@@ -50,6 +50,12 @@ func New(shop_name string, conf Conf, ctx context.Context) (Handler, error) {
 			c = conf.Bitflyer()
 		}
 		return openBitflyer(c, ctx)
+	case NAME_COINCHECK:
+		var c *CoincheckConf
+		if conf != nil {
+			c = conf.Coincheck()
+		}
+		return openCoincheck(c, ctx)
 	default:
 		break
 	}

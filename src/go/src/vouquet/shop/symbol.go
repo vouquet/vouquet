@@ -30,6 +30,8 @@ func GetKey(shop_name string, symbol_name string) (string, error) {
 		return getGmoKey(symbol_name)
 	case NAME_BITFLYER:
 		return getBitflyerKey(symbol_name)
+	case NAME_COINCHECK:
+		return getCoincheckKey(symbol_name)
 	default:
 		break
 	}
