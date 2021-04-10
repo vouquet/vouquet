@@ -59,6 +59,7 @@ func noticer() error {
 	if err != nil {
 		return err
 	}
+	defer s_recorder.Close()
 	sr_ch, err := s_recorder.StreamRead()
 	if err != nil {
 		return err

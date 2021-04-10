@@ -11,6 +11,8 @@ type Logger interface{
 }
 
 type Florist interface {
+	Release() error
+
 	SetPlanter(farm.Planter)
 	SetLogger(Logger)
 	SetSize(float64)
@@ -49,4 +51,8 @@ func (self *FloristBase) Size() float64 {
 
 func (self *FloristBase) SetSize(size float64) {
 	self.size = size
+}
+
+func (self *FloristBase) Release() error {
+	return self.planter.Release()
 }

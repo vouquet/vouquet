@@ -74,6 +74,7 @@ func florister() error {
 	if err != nil {
 		return err
 	}
+	defer fl.Release()
 	fl.SetSize(Size)
 
 	st_ch := make(chan *farm.State)

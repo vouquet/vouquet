@@ -11,7 +11,7 @@ import (
 )
 
 type ShipRecorder struct {
-	seed string
+	seed   string
 	soil   shop.Handler
 
 	p_idx  map[string]int64
@@ -59,6 +59,11 @@ func OpenShipRecorder(soil_name string, seed string, c_path string, ctx context.
 		return nil, err
 	}
 	return self, nil
+}
+
+func (self *ShipRecorder) Close() error {
+	self.cancel()
+	return self.soil.Release()
 }
 
 func (self *ShipRecorder) StreamRead() (<- chan *ShipRecord, error) {
