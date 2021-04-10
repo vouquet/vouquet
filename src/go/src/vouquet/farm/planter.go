@@ -25,10 +25,12 @@ type Planter interface {
 	WinCnt()  int64
 	Lose()    float64
 	LoseCnt() int64
+
+	Release() error
 }
 
 type Flowerpot struct {
-	seed  string
+	seed    string
 	soil    shop.Handler
 	sp_list []*Sprout
 
@@ -75,6 +77,11 @@ func NewFlowerpot(soil_name string, seed string, c_path string, ctx context.Cont
 		return nil, err
 	}
 	return self, nil
+}
+
+func (self *Flowerpot) Release() error {
+	self.cancel()
+	return self.soil.Release()
 }
 
 func (self *Flowerpot) Seed() string {
@@ -399,6 +406,10 @@ func NewTestPlanter(seed string, log logger) *TestPlanter {
 		log: log,
 		mtx: new(sync.Mutex),
 	}
+}
+
+func (self *TestPlanter) Release() error {
+	return nil
 }
 
 func (self *TestPlanter) Seed() string {

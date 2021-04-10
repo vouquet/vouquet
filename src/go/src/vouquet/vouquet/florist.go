@@ -37,6 +37,10 @@ func NewFlorist(name string, p farm.Planter, state []*farm.State, log base.Logge
 	return newFlorist(o), nil
 }
 
+func (self *Florist) Release() error {
+	return self.original.Release()
+}
+
 func newFlorist(original base.Florist) *Florist {
 	return &Florist{
 		original: original,
