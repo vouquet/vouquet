@@ -4,12 +4,12 @@ import (
 	"os"
 	"fmt"
 	"flag"
-	"sync"
 	"time"
 	"context"
 )
 
 import (
+	"vouquet/lock"
 	"vouquet/farm"
 )
 
@@ -48,7 +48,7 @@ type worker struct {
 	themograpy  *farm.Themography
 
 	ctx         context.Context
-	mtx         *sync.Mutex
+	mtx         *lock.TryMutex
 }
 
 func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Context) *worker {
@@ -58,12 +58,21 @@ func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Co
 		registry:r,
 
 		ctx: ctx,
-		mtx: new(sync.Mutex),
+		mtx: lock.NewTryMutex(ctx),
 	}
 }
 
 func (self *worker) Do() error {
-	self.mtx.Lock()
+	ok, err := self.mtx.TryLock()
+	if err != nil {
+		if err == lock.ERR_CONTEXT_CANCEL {
+			return nil
+		}
+		return err
+	}
+	if !ok {
+		return nil
+	}
 	defer self.mtx.Unlock()
 
 	if self.themograpy == nil {
@@ -83,7 +92,12 @@ func (self *worker) Do() error {
 }
 
 func (self *worker) ThemograpyRelease() error {
-	self.mtx.Lock()
+	if err := self.mtx.Lock(); err !=nil {
+		if err == lock.ERR_CONTEXT_CANCEL {
+			return nil
+		}
+		return err
+	}
 	defer self.mtx.Unlock()
 
 	if self.themograpy == nil {
