@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"flag"
+	"sort"
 	"time"
 	"context"
 	"strconv"
@@ -117,7 +118,13 @@ func eval() error {
 	fmt.Printf("vqt_eval %s report\n", Version)
 	fmt.Printf("simulate date: '%s' -> '%s'\n", head, tail)
 	fmt.Printf("++++++++++++++++++++++++++++++++\n")
+
+	idx := []string{}
 	for _, name := range vouquet.FLORIST_NAMES {
+		idx = append(idx, name)
+	}
+	sort.SliceStable(idx, func(i, j int) bool { return idx[i] < idx[j] })
+	for _, name := range idx {
 		pl, ok := pls[name]
 		if !ok {
 			fmt.Printf("%s : was not run test.", name)
