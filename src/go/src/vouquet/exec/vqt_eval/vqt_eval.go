@@ -96,6 +96,10 @@ func eval() error {
 	}
 	log.WriteMsg("read size: %v", len(t_status))
 
+	if len(t_status) < 1 {
+		return fmt.Errorf("This range havn't rate data.")
+	}
+
 	head = t_status[0].Date()
 	tail = t_status[len(t_status)-1].Date()
 
