@@ -40,57 +40,108 @@ func (self *logger) WriteDebug(s string, msg ...interface{}) {
 	fmt.Fprintf(os.Stdout, tstr + " [DEBUG] " + s + "\n" , msg...)
 }
 
+type worker struct {
+	soil_name   string
+	c_path      string
+
+	registry    *farm.Registry
+	themograpy  *farm.Themography
+
+	ctx         context.Context
+	mtx         *sync.Mutex
+}
+
+func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Context) *worker {
+	return &worker{
+		soil_name: soil_name,
+		c_path: c_path,
+		registry:r,
+
+		ctx: ctx,
+		mtx: new(sync.Mutex),
+	}
+}
+
+func (self *worker) Do() error {
+	self.mtx.Lock()
+	defer self.mtx.Unlock()
+
+	if self.themograpy == nil {
+		if err := self.open(); err != nil {
+			return err
+		}
+	}
+
+	ss, err := self.themograpy.Status()
+	if err != nil {
+		return err
+	}
+	if err := self.registry.Record(ss); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (self *worker) ThemograpyRelease() error {
+	self.mtx.Lock()
+	defer self.mtx.Unlock()
+
+	if self.themograpy == nil {
+		return nil
+	}
+	return self.themograpy.Release()
+}
+
+func (self *worker) open() error {
+	t, err := farm.NewThemograpy(self.c_path, self.soil_name, self.ctx)
+	if err != nil {
+		return err
+	}
+	self.themograpy = t
+	return nil
+}
+
 func registrar() error {
 	log := new(logger)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	ctx := context.Background()
 	r, err := farm.OpenRegistry(Cpath, ctx, log)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
-	wg := new(sync.WaitGroup)
+	wks := []*worker{}
 	for _, s := range farm.SOIL_ALL {
-		t, err := farm.NewThemograpy(Cpath, s, ctx)
-		if err != nil {
-			return err
-		}
-		defer t.Release()
-
-		wg.Add(1)
-		go func () {
-			defer wg.Done()
-
-			mtx := new(sync.Mutex)
-			timer := time.NewTicker(time.Second)
-			for {
-				select {
-				case <- ctx.Done():
-					return
-				case <- timer.C:
-					go func() {
-						mtx.Lock()
-						defer mtx.Unlock()
-
-						ss, err := t.Status()
-						if err != nil {
-							log.WriteErr("%s", err)
-							return
-						}
-
-						if err := r.Record(ss); err != nil {
-							log.WriteErr("%s", err)
-							return
-						}
-					}()
-				}
-			}
-		}()
+		wks = append(wks, NewWorker(r, s, Cpath, ctx))
 	}
+	defer func() {
+		for _, wk := range wks {
+			wk.ThemograpyRelease()
+		}
+	}()
 
 	log.WriteMsg("Start %s %s", SELF_NAME, Version)
-	wg.Wait()
+
+	defer cancel()
+	timer := time.NewTicker(time.Second)
+	for {
+		select {
+		case <- ctx.Done():
+			return nil
+		case <- timer.C:
+			go func() {
+				for _, wk := range wks {
+					go func(wk *worker) {
+						if err := wk.Do(); err != nil {
+							log.WriteErr("%s", err)
+						}
+					}(wk)
+				}
+			}()
+		}
+	}
+
 	return nil
 }
 
