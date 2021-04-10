@@ -19,7 +19,7 @@ func NewTryMutex(ctx context.Context) *TryMutex {
 		ctx = context.Background()
 	}
 	return &TryMutex{
-		l: make(chan struct{}),
+		l: make(chan struct{}, 1),
 		ctx: ctx,
 	}
 }
