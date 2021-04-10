@@ -8,10 +8,20 @@ import (
 const (
 	TYPE_SELL string = "SELL"
 	TYPE_BUY  string = "BUY"
+
+	NAME_GMOCOIN   string = "coinzcom"
+	NAME_BITFLYER  string = "bitflyer"
+	NAME_COINCHECK string = "coincheck"
+//	NAME_BINANCE   string = "binance"
 )
 
 var (
-	NAMES []string = []string{GMOCOIN}
+	NAMES []string = []string{
+			NAME_GMOCOIN,
+			NAME_BITFLYER,
+			NAME_COINCHECK,
+//			NAME_BINANCE,
+		}
 )
 
 type Handler interface {
@@ -28,12 +38,24 @@ type Handler interface {
 
 func New(shop_name string, conf Conf, ctx context.Context) (Handler, error) {
 	switch shop_name {
-	case GMOCOIN:
+	case NAME_GMOCOIN:
 		var c *GmoConf
 		if conf != nil {
 			c = conf.Gmo()
 		}
 		return openGmo(c, ctx)
+	case NAME_BITFLYER:
+		var c *BitflyerConf
+		if conf != nil {
+			c = conf.Bitflyer()
+		}
+		return openBitflyer(c, ctx)
+	case NAME_COINCHECK:
+		var c *CoincheckConf
+		if conf != nil {
+			c = conf.Coincheck()
+		}
+		return openCoincheck(c, ctx)
 	default:
 		break
 	}

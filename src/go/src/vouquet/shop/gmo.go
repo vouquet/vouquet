@@ -9,14 +9,14 @@ import (
 	"github.com/vouquet/go-gmo-coin/gomocoin"
 )
 
-const (
-	GMOCOIN string = "coinzcom"
-)
-
 var (
 	Symbol2Gmo map[string]string
 	Mode2Gmo   map[string]string
 )
+
+func gmoErrorf(s string, msg ...interface{}) error {
+	return fmt.Errorf(NAME_GMOCOIN + ": "+ s, msg...)
+}
 
 func init() {
 	Symbol2Gmo = make(map[string]string)
@@ -47,7 +47,7 @@ func init() {
 func getGmoKey(name string) (string, error) {
 	key, ok := Symbol2Gmo[name]
 	if !ok {
-		return "", fmt.Errorf("cannot support '%s'", name)
+		return "", gmoErrorf("cannot support '%s'", name)
 	}
 
 	return key, nil
@@ -68,7 +68,7 @@ func openGmo(conf *GmoConf, ctx context.Context) (*GmoHandler, error) {
 
 	shop, err := gomocoin.NewGoMOcoin(key, secret, ctx)
 	if err != nil {
-		return nil, err
+		return nil, gmoErrorf("%s", err)
 	}
 	return &GmoHandler{
 		shop: shop,
@@ -82,7 +82,7 @@ type GmoHandler struct {
 func (self *GmoHandler) GetRate() (map[string]Rate, error) {
 	rates, err := self.shop.GetRate()
 	if err != nil {
-		return nil, err
+		return nil, gmoErrorf("%s", err)
 	}
 
 	i_rates := make(map[string]Rate)
@@ -95,11 +95,11 @@ func (self *GmoHandler) GetRate() (map[string]Rate, error) {
 func (self *GmoHandler) GetPositions(symbol string) ([]Position, error) {
 	key, err := getGmoKey(symbol)
 	if err != nil {
-		return nil, err
+		return nil, gmoErrorf("%s", err)
 	}
 	poss, err := self.shop.GetPositions(key)
 	if err != nil {
-		return nil, err
+		return nil, gmoErrorf("%s", err)
 	}
 
 	i_poss := []Position{}
@@ -112,12 +112,12 @@ func (self *GmoHandler) GetPositions(symbol string) ([]Position, error) {
 func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 	key, err := getGmoKey(symbol)
 	if err != nil {
-		return nil, err
+		return nil, gmoErrorf("%s", err)
 	}
 
 	fixes, err := self.shop.GetFixes(key)
 	if err != nil {
-		return nil, err
+		return nil, gmoErrorf("%s", err)
 	}
 
 	i_fixes := []Fix{}
@@ -130,7 +130,7 @@ func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 func (self *GmoHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
 	key, err := getGmoKey(symbol)
 	if err != nil {
-		return err
+		return gmoErrorf("%s", err)
 	}
 	return self.shop.OrderStreamIn(o_type, key, size)
 }
@@ -138,11 +138,14 @@ func (self *GmoHandler) OrderStreamIn(o_type string, symbol string, size float64
 func (self *GmoHandler) OrderStreamOut(pos Position) error {
 	g_pos, ok := pos.(*gomocoin.Position)
 	if !ok {
-		return fmt.Errorf("unkown type at this store.")
+		return gmoErrorf("unkown type at this store.")
 	}
 	return self.shop.OrderStreamOut(g_pos)
 }
 
 func (self *GmoHandler) Release() error {
-	return self.shop.Close()
+	if err := self.shop.Close(); err != nil {
+		return gmoErrorf("%s", err)
+	}
+	return nil
 }
