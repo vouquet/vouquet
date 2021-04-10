@@ -14,6 +14,10 @@ var (
 	Symbol2Bitflyer map[string]string
 )
 
+func bitflyerErrorf(s string, msg ...interface{}) error {
+	return fmt.Errorf(NAME_BITFLYER + ": "+ s, msg...)
+}
+
 func init() {
 	Symbol2Bitflyer = make(map[string]string)
 	Symbol2Bitflyer[BTC2JPY_spt] = bitflyer.PRODUCTCODE_BTC_JPY
@@ -53,14 +57,14 @@ func openBitflyer(conf *BitflyerConf, ctx context.Context) (*BitflyerHandler, er
 	for _, t := range targets {
 		o_t, err := getBitflyerKey(t)
 		if err != nil {
-			return nil, err
+			return nil, bitflyerErrorf("%s", err)
 		}
 		original_targets = append(original_targets, o_t)
 	}
 
 	shop, err := bitflyer.NewBitflyer(key, secret, ctx)
 	if err != nil {
-		return nil, err
+		return nil, bitflyerErrorf("%s", err)
 	}
 	return &BitflyerHandler {
 		shop: shop,
@@ -77,7 +81,7 @@ type BitflyerHandler struct {
 func (self *BitflyerHandler) GetRate() (map[string]Rate, error) {
 	rates, err := self.shop.GetRates(self.targets)
 	if err != nil {
-		return nil, err
+		return nil, bitflyerErrorf("%s", err)
 	}
 
 	i_rates := make(map[string]Rate)
@@ -88,19 +92,19 @@ func (self *BitflyerHandler) GetRate() (map[string]Rate, error) {
 }
 
 func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
-	return nil, fmt.Errorf("cannot use yet")
+	return nil, bitflyerErrorf("cannot use yet")
 }
 
 func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
-	return nil, fmt.Errorf("cannot use yet")
+	return nil, bitflyerErrorf("cannot use yet")
 }
 
 func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
-	return fmt.Errorf("cannot use yet")
+	return bitflyerErrorf("cannot use yet")
 }
 
 func (self *BitflyerHandler) OrderStreamOut(pos Position) error {
-	return fmt.Errorf("cannot use yet")
+	return bitflyerErrorf("cannot use yet")
 }
 
 func (self *BitflyerHandler) Release() error {
