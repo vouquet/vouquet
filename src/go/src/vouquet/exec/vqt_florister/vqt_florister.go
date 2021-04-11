@@ -4,13 +4,13 @@ import (
 	"os"
 	"fmt"
 	"flag"
-	"sync"
 	"time"
 	"context"
 	"strconv"
 )
 
 import (
+	"vouquet/lock"
 	"vouquet/farm"
 	"vouquet/vouquet"
 )
@@ -81,7 +81,7 @@ func florister() error {
 	go func() {
 		defer close(st_ch)
 
-		mtx := new(sync.Mutex)
+		mtx := lock.NewTryMutex(ctx)
 		t := time.NewTicker(time.Second)
 		var before time.Time
 		for {
@@ -90,7 +90,17 @@ func florister() error {
 				return
 			case <-t.C:
 				go func() {
-					mtx.Lock()
+					ok, err := mtx.TryLock()
+					if err != nil {
+						if err == lock.ERR_CONTEXT_CANCEL {
+							return
+						}
+						log.WriteErr("Cannot lock: '%s'", err)
+						return
+					}
+					if !ok {
+						return
+					}
 					defer mtx.Unlock()
 
 					state, err := r.GetLastState(Soil, Seed)
