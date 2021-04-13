@@ -139,6 +139,7 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 
 	pos := []Position{}
 	if no_fix_val < float64(0) {
+		log.Println("bitflyer.GetPositions: len: ", len(pos))
 		return pos, nil
 	}
 
@@ -159,6 +160,7 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 	}
 
 	if no_fix_val <= float64(0) {
+		log.Println("bitflyer.GetPositions: len: ", len(pos))
 		return pos, nil
 	}
 
@@ -173,9 +175,6 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 
 	price := rate.Ask()
 	size := no_fix_val - (no_fix_val * bitflyer.FEE_TRADE_RATE)
-	log.Println(no_fix_val)
-	log.Printf("%.3f\n", price)
-	log.Printf("%.3f\n", size)
 	dummy_order := &bitflyer.Order{
 		Id: time.Now().Unix(),
 		Product: key,
@@ -184,7 +183,8 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 		Side: TYPE_BUY,
 	}
 	pos = append(pos, &BitflyerPosition{order:dummy_order})
-	log.Println(*dummy_order)
+	log.Println("bitflyer.GetPositions: len: ", len(pos))
+	log.Printf("bitflyer.GetPositions: size: %f\n", size)
 	return pos, nil
 }
 
@@ -211,15 +211,26 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 
 func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
 	if o_type != TYPE_BUY {
-		return fmt.Errorf("cannot support type of order '%s'", o_type)
+		return bitflyerErrorf("cannot support type of order '%s'", o_type)
 	}
-	//buy
-	return bitflyerErrorf("cannot use yet")
+	key, err := getBitflyerKey(symbol)
+	if err != nil {
+		return err
+	}
+	if _, err := self.shop.MarketOrder(key, o_type, size); err != nil {
+		return bitflyerErrorf("%s", err)
+	}
+	return nil
 }
 
 func (self *BitflyerHandler) OrderStreamOut(pos Position) error {
-	//sell
-	return bitflyerErrorf("cannot use yet")
+	if pos.OrderType() != TYPE_BUY {
+		return bitflyerErrorf("cannot support type of order on position.")
+	}
+	if _, err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
+		return bitflyerErrorf("%s", err)
+	}
+	return nil
 }
 
 func (self *BitflyerHandler) Release() error {
