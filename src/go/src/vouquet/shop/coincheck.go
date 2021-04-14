@@ -78,11 +78,13 @@ func (self *CoincheckHandler) GetFixes(symbol string) ([]Fix, error) {
 	return nil, coincheckErrorf("cannot use yet")
 }
 
-func (self *CoincheckHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
+func (self *CoincheckHandler) Order(o_type string, symbol string,
+							size float64, is_stream bool, price float64) error {
 	return coincheckErrorf("cannot use yet")
 }
 
-func (self *CoincheckHandler) OrderStreamOut(pos Position) error {
+func (self *CoincheckHandler) OrderFix(pos Position,
+										is_stream bool, price float64) error {
 	return coincheckErrorf("cannot use yet")
 }
 

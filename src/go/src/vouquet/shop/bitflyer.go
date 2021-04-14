@@ -257,7 +257,8 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 	return fixes, nil
 }
 
-func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
+func (self *BitflyerHandler) Order(o_type string, symbol string,
+							size float64, is_stream bool, price float64) error {
 	if isMargin(symbol) {
 		return bitflyerErrorf("cannot support 'margin' order.")
 	}
@@ -271,17 +272,31 @@ func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size fl
 
 	//twice fee is stock, that use when order of buy and sell.
 	fee_ed_size := size + (size * bitflyer.FEE_TRADE_RATE * 2)
-	if _, err := self.shop.MarketOrder(key, o_type, fee_ed_size); err != nil {
+
+	if is_stream {
+		if _, err := self.shop.MarketOrder(key, o_type, fee_ed_size); err != nil {
+			return bitflyerErrorf("%s", err)
+		}
+		return nil
+	}
+	if _, err := self.shop.LimitOrder(key, o_type, fee_ed_size, price); err != nil {
 		return bitflyerErrorf("%s", err)
 	}
 	return nil
 }
 
-func (self *BitflyerHandler) OrderStreamOut(pos Position) error {
+func (self *BitflyerHandler) OrderFix(pos Position,
+										is_stream bool, price float64) error {
 	if pos.OrderType() != TYPE_BUY {
 		return bitflyerErrorf("cannot support type of order on position.")
 	}
-	if _, err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
+	if is_stream {
+		if _, err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
+			return bitflyerErrorf("%s", err)
+		}
+		return nil
+	}
+	if _, err := self.shop.LimitOrder(pos.Symbol(), TYPE_SELL, pos.Size(), price); err != nil {
 		return bitflyerErrorf("%s", err)
 	}
 	return nil

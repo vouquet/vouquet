@@ -28,10 +28,12 @@ type Handler interface {
 	GetRate()   (map[string]Rate, error)
 	GetPositions(string) ([]Position, error)
 	GetFixes(string) ([]Fix, error)
-	OrderStreamIn(string, string, float64) error
-	OrderStreamOut(Position) error
-//	Order(o_type, *Symbol, float64)
-//	OrderFix
+//	OrderStreamIn(string, string, float64) error
+//	OrderStreamOut(Position) error
+	Order(string, string, float64, bool, float64) error //o_type, symbol, size, isStream, price
+	OrderFix(Position, bool, float64) error //Position, isStream, price
+//	Order(o_type, string, float64) error //o_type, symbol, size, isStream, price
+//	OrderFix(Position) error//Position, isStream, price
 
 	Release() error
 }

@@ -127,18 +127,27 @@ func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 	return i_fixes, nil
 }
 
-func (self *GmoHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
+func (self *GmoHandler) Order(o_type string, symbol string,
+							size float64, is_stream bool, price float64) error {
 	key, err := getGmoKey(symbol)
 	if err != nil {
 		return gmoErrorf("%s", err)
 	}
+
+	if !is_stream {
+		return gmoErrorf("not suport yet")
+	}
 	return self.shop.OrderStreamIn(o_type, key, size)
 }
 
-func (self *GmoHandler) OrderStreamOut(pos Position) error {
+func (self *GmoHandler) OrderFix(pos Position,
+										is_stream bool, price float64) error {
 	g_pos, ok := pos.(*gomocoin.Position)
 	if !ok {
 		return gmoErrorf("unkown type at this store.")
+	}
+	if !is_stream {
+		return gmoErrorf("not suport yet")
 	}
 	return self.shop.OrderStreamOut(g_pos)
 }

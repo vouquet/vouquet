@@ -96,7 +96,7 @@ func (self *Flowerpot) SetSeed(o_type string, size float64, opt *OpeOption) erro
 		opt = DEFAULT_OpeOption
 	}
 
-	if err := self.soil.OrderStreamIn(o_type, self.seed, size); err != nil {
+	if err := self.soil.Order(o_type, self.seed, size, opt.Stream, opt.Price); err != nil {
 		return err
 	}
 	sp := &Sprout{
@@ -214,7 +214,7 @@ func (self *Flowerpot) Harvest(h_sp *Sprout, opt *OpeOption) error {
 		}
 		return fmt.Errorf("nil pointer error, doesn't get a position pointer.")
 	}
-	if err := self.soil.OrderStreamOut(h_sp.pos); err != nil {
+	if err := self.soil.OrderFix(h_sp.pos, opt.Stream, opt.Price); err != nil {
 		return err
 	}
 
