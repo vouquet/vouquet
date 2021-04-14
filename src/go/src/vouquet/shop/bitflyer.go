@@ -217,7 +217,10 @@ func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size fl
 	if err != nil {
 		return err
 	}
-	if _, err := self.shop.MarketOrder(key, o_type, size); err != nil {
+
+	//twice fee is stock, that use when order of buy and sell.
+	fee_ed_size := size + (size * bitflyer.FEE_TRADE_RATE * 2)
+	if _, err := self.shop.MarketOrder(key, o_type, fee_ed_size); err != nil {
 		return bitflyerErrorf("%s", err)
 	}
 	return nil
