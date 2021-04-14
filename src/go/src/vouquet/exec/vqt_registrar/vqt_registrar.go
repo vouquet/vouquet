@@ -47,16 +47,22 @@ type worker struct {
 	registry    *farm.Registry
 	themograpy  *farm.Themography
 
+	fail_cnt    int
+
+	log         *logger
 	ctx         context.Context
 	mtx         *lock.TryMutex
 }
 
-func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Context) *worker {
+func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Context, log *logger) *worker {
 	return &worker{
 		soil_name: soil_name,
 		c_path: c_path,
 		registry:r,
 
+		fail_cnt: 60,
+
+		log: log,
 		ctx: ctx,
 		mtx: lock.NewTryMutex(ctx),
 	}
@@ -65,12 +71,14 @@ func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Co
 func (self *worker) Do() error {
 	ok, err := self.mtx.TryLock()
 	if err != nil {
+		self.fail_cnt++
 		if err == lock.ERR_CONTEXT_CANCEL {
 			return nil
 		}
 		return err
 	}
 	if !ok {
+		self.fail_cnt++
 		return nil
 	}
 	defer self.mtx.Unlock()
@@ -83,12 +91,59 @@ func (self *worker) Do() error {
 
 	ss, err := self.themograpy.Status()
 	if err != nil {
+		self.fail_cnt++
+		self.failedSleep()
 		return err
 	}
+	self.fail_cnt--
 	if err := self.registry.Record(ss); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (self *worker) failedSleep() {
+	if self.fail_cnt <= 10 {
+		return
+	}
+	if self.fail_cnt <= 60 {
+		self.sleep(time.Second * 60)
+		return
+	}
+	if self.fail_cnt <= (60 * 5) {
+		self.sleep(time.Second * 60 * 5)
+		return
+	}
+	if self.fail_cnt <= (60 * 15) {
+		self.sleep(time.Second * 60 * 15)
+		return
+	}
+	if self.fail_cnt <= (60 * 30) {
+		self.sleep(time.Second * 60 * 30)
+		return
+	}
+	if self.fail_cnt <= (60 * 60) {
+		self.sleep(time.Second * 60 * 60)
+		return
+	}
+	if self.fail_cnt <= (60 * 60 * 6) {
+		self.sleep(time.Second * 60 * 60 * 6)
+		return
+	}
+	self.sleep(time.Second * 60 * 60 * 12)
+}
+
+func (self *worker) sleep(size time.Duration) {
+	t := time.NewTimer(size)
+	defer t.Stop()
+
+	self.log.WriteMsg("%s error detected. sleep %s", self.soil_name, size)
+	defer self.log.WriteMsg("%s sleep (%s) done.", self.soil_name, size)
+	select {
+	case <- self.ctx.Done():
+		return
+	case <- t.C:
+	}
 }
 
 func (self *worker) ThemograpyRelease() error {
@@ -127,7 +182,7 @@ func registrar() error {
 
 	wks := []*worker{}
 	for _, s := range farm.SOIL_ALL {
-		wks = append(wks, NewWorker(r, s, Cpath, ctx))
+		wks = append(wks, NewWorker(r, s, Cpath, ctx, log))
 	}
 	defer func() {
 		for _, wk := range wks {
@@ -138,6 +193,7 @@ func registrar() error {
 	log.WriteMsg("Start %s %s", SELF_NAME, Version)
 
 	defer cancel()
+
 	timer := time.NewTicker(time.Second)
 	for {
 		select {
