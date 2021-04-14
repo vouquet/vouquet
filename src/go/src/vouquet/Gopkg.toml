@@ -31,7 +31,7 @@
   version = "0.0.3"
 [[constraint]]
   name = "github.com/vouquet/go-bitflyer"
-  version = "0.0.1-1"
+  version = "0.0.2"
 [[constraint]]
   name = "github.com/vouquet/go-coincheck"
   version = "0.0.1"

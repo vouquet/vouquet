@@ -2,6 +2,7 @@ package shop
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -20,6 +21,9 @@ const (
 	MONA2JPY_spt string = "MONA2JPY_spt"
 	MONA2JPY_mgn string = "MONA2JPY_mgn"
 
+	SYMBOL_mgn   string = "_mgn"
+	SYMBOL_spt   string = "_spt"
+
 	MODE_spot    string = "SPOT"
 	MODE_margin  string = "MARGIN"
 )
@@ -36,4 +40,8 @@ func GetKey(shop_name string, symbol_name string) (string, error) {
 		break
 	}
 	return "", fmt.Errorf("undefined name of shop '%s'", shop_name)
+}
+
+func isMargin(symbol_name string) bool {
+	return strings.Contains(symbol_name, SYMBOL_mgn)
 }
