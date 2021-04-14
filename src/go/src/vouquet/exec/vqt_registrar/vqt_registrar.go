@@ -95,7 +95,10 @@ func (self *worker) Do() error {
 		self.failedSleep()
 		return err
 	}
-	self.fail_cnt--
+
+	if self.fail_cnt > 0 {
+		self.fail_cnt--
+	}
 	if err := self.registry.Record(ss); err != nil {
 		return err
 	}
