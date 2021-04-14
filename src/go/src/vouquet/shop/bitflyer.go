@@ -1,7 +1,5 @@
 package shop
 
-import "log"
-
 import (
 	"fmt"
 	"time"
@@ -139,7 +137,6 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 
 	pos := []Position{}
 	if no_fix_val < float64(0) {
-		log.Println("bitflyer.GetPositions: len: ", len(pos))
 		return pos, nil
 	}
 
@@ -160,7 +157,6 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 	}
 
 	if no_fix_val <= float64(0) {
-		log.Println("bitflyer.GetPositions: len: ", len(pos))
 		return pos, nil
 	}
 
@@ -183,13 +179,11 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 		Side: TYPE_BUY,
 	}
 	pos = append(pos, &BitflyerPosition{order:dummy_order})
-	log.Println("bitflyer.GetPositions: len: ", len(pos))
-	log.Printf("bitflyer.GetPositions: size: %f\n", size)
 	return pos, nil
 }
 
 func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
-	return nil, bitflyerErrorf("cannot use yet")
+	return nil, bitflyerErrorf("cannot support")
 	/*
 	key, err := getBitflyerKey(symbol)
 	if err != nil {
