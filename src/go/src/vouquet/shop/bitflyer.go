@@ -109,6 +109,10 @@ func (self *BitflyerHandler) GetRate() (map[string]Rate, error) {
 }
 
 func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
+	if isMargin(symbol) {
+		return nil, bitflyerErrorf("cannot support 'margin' order.")
+	}
+
 	key, err := getBitflyerKey(symbol)
 	if err != nil {
 		return nil, bitflyerErrorf("%s", err)
@@ -183,6 +187,39 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 }
 
 func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
+	if isMargin(symbol) {
+		return nil, bitflyerErrorf("cannot support 'margin' order.")
+	}
+/*
+	c_os, err := self.shop.GetClosedOrders(key)
+	if err != nil {
+		return nil, bitflyerErrorf("%s", err)
+	}
+
+	sell_buf := []*bitflyer.Order{}
+	for _, order := range c_os {
+		_, ok := mapped[order.Id]
+		if ok {
+			continue
+		}
+
+		if order.Side == TYPE_SELL {
+			sell_buf = append(sell_buf, order)
+			continue
+		}
+
+		if order.Side == TYPE_BUY {
+			continue
+		}
+
+		if no_fix_val < float64(order.Price * order.Size) {
+			break
+		}
+		pos = append(pos, &BitflyerPosition{order:order})
+		no_fix_val -= float64(order.Price * order.Size)
+	}
+	*/
+
 	return nil, bitflyerErrorf("cannot support")
 	/*
 	key, err := getBitflyerKey(symbol)
@@ -204,12 +241,15 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 }
 
 func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
-	if o_type != TYPE_BUY {
-		return bitflyerErrorf("cannot support type of order '%s'", o_type)
+	if isMargin(symbol) {
+		return bitflyerErrorf("cannot support 'margin' order.")
 	}
 	key, err := getBitflyerKey(symbol)
 	if err != nil {
 		return err
+	}
+	if o_type != TYPE_BUY {
+		return bitflyerErrorf("cannot support type of order '%s'", o_type)
 	}
 
 	//twice fee is stock, that use when order of buy and sell.
