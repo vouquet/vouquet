@@ -93,6 +93,7 @@ type BitflyerHandler struct {
 	shop *bitflyer.Bitflyer
 
 	targets []string
+	mapped  map[int64]struct{}
 }
 
 func (self *BitflyerHandler) GetRate() (map[string]Rate, error) {
@@ -190,54 +191,70 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 	if isMargin(symbol) {
 		return nil, bitflyerErrorf("cannot support 'margin' order.")
 	}
-/*
+	key, err := getBitflyerKey(symbol)
+	if err != nil {
+		return nil, bitflyerErrorf("%s", err)
+	}
+
 	c_os, err := self.shop.GetClosedOrders(key)
 	if err != nil {
 		return nil, bitflyerErrorf("%s", err)
 	}
 
+	if self.mapped == nil {
+		self.mapped = map[int64]struct{}{}
+		for _, order := range c_os {
+			self.mapped[order.Id] = struct{}{}
+		}
+
+		return []Fix{}, nil
+	}
+
 	sell_buf := []*bitflyer.Order{}
+	buy_buf := []*bitflyer.Order{}
 	for _, order := range c_os {
-		_, ok := mapped[order.Id]
+		_, ok := self.mapped[order.Id]
 		if ok {
 			continue
 		}
-
-		if order.Side == TYPE_SELL {
+		switch order.Side {
+		case TYPE_SELL:
 			sell_buf = append(sell_buf, order)
-			continue
+		case TYPE_BUY:
+			buy_buf = append(buy_buf, order)
 		}
-
-		if order.Side == TYPE_BUY {
-			continue
+	}
+	if len(buy_buf) < 1 {
+		for _, s_order := range sell_buf {
+			self.mapped[s_order.Id] = struct{}{}
 		}
+		return []Fix{}, nil
+	}
 
-		if no_fix_val < float64(order.Price * order.Size) {
+	fixes := []Fix{}
+	for _, s_order := range sell_buf {
+		search_size := s_order.Size + (s_order.Size * bitflyer.FEE_TRADE_RATE * 2)
+
+		for _, b_order := range buy_buf {
+			if b_order.Size != search_size {
+				continue
+			}
+
+			fixes = append(fixes, &BitflyerDummyFix{
+				id: fmt.Sprintf("%v-%v", b_order.Id, s_order.Id),
+				symbol: b_order.Product,
+				o_type: TYPE_BUY,
+				size: s_order.Size,
+				price: s_order.Price,
+				yield: (s_order.Price - b_order.Price) * s_order.Size,
+				date: time.Now(),
+			})
+			self.mapped[b_order.Id] = struct{}{}
+			self.mapped[s_order.Id] = struct{}{}
 			break
 		}
-		pos = append(pos, &BitflyerPosition{order:order})
-		no_fix_val -= float64(order.Price * order.Size)
 	}
-	*/
-
-	return nil, bitflyerErrorf("cannot support")
-	/*
-	key, err := getBitflyerKey(symbol)
-	if err != nil {
-		return nil, err
-	}
-
-	os, err := self.shop.GetClosedOrders(key)
-	if err != nil {
-		return nil, err
-	}
-
-	fs := []Fix{}
-	for _, o := range os {
-		pos = append(pos, &BitflyerPosition{order:o})
-	}
-	return fs, nil
-	*/
+	return fixes, nil
 }
 
 func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
@@ -332,4 +349,42 @@ func (self *BitflyerPosition) Price() float64 {
 
 func (self *BitflyerPosition) OrderType() string {
 	return self.order.Side
+}
+
+type BitflyerDummyFix struct {
+	id     string
+	symbol string
+	o_type string
+	size   float64
+	price  float64
+	yield  float64
+	date   time.Time
+}
+
+func (self *BitflyerDummyFix) Id() string {
+	return self.id
+}
+
+func (self *BitflyerDummyFix) Symbol() string {
+	return self.symbol
+}
+
+func (self *BitflyerDummyFix) OrderType() string {
+	return self.o_type
+}
+
+func (self *BitflyerDummyFix) Size() float64 {
+	return self.size
+}
+
+func (self *BitflyerDummyFix) Price() float64 {
+	return self.price
+}
+
+func (self *BitflyerDummyFix) Yield() (float64, error) {
+	return self.yield, nil
+}
+
+func (self *BitflyerDummyFix) Date() (time.Time, error) {
+	return self.date, nil
 }
