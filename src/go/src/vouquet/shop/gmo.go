@@ -97,6 +97,14 @@ func (self *GmoHandler) GetPositions(symbol string) ([]Position, error) {
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
 	}
+
+	if isMargin(symbol) {
+		return self.getMarginPositions(key)
+	}
+	return self.getSpotPositions(key)
+}
+
+func (self *GmoHandler) getMarginPositions(key string) ([]Position, error) {
 	poss, err := self.shop.GetPositions(key)
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
@@ -109,12 +117,23 @@ func (self *GmoHandler) GetPositions(symbol string) ([]Position, error) {
 	return i_poss, nil
 }
 
+func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
+	return nil, gmoErrorf("not yet")
+}
+
 func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 	key, err := getGmoKey(symbol)
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
 	}
 
+	if isMargin(symbol) {
+		return self.getMarginFixes(key)
+	}
+	return self.getSpotFixes(key)
+}
+
+func (self *GmoHandler) getMarginFixes(key string) ([]Fix, error) {
 	fixes, err := self.shop.GetFixes(key)
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
@@ -127,6 +146,10 @@ func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 	return i_fixes, nil
 }
 
+func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
+	return nil, gmoErrorf("not yet")
+}
+
 func (self *GmoHandler) Order(o_type string, symbol string,
 							size float64, is_stream bool, price float64) error {
 	key, err := getGmoKey(symbol)
@@ -137,7 +160,14 @@ func (self *GmoHandler) Order(o_type string, symbol string,
 	if !is_stream {
 		return gmoErrorf("not suport yet")
 	}
+	if isMargin(symbol) {
+		return self.shop.OrderStreamIn(o_type, key, size)
+	}
+	if o_type != TYPE_BUY {
+		return gmoErrorf("cannot operation '%s'", o_type)
+	}
 	return self.shop.OrderStreamIn(o_type, key, size)
+
 }
 
 func (self *GmoHandler) OrderFix(pos Position,
@@ -146,10 +176,17 @@ func (self *GmoHandler) OrderFix(pos Position,
 	if !ok {
 		return gmoErrorf("unkown type at this store.")
 	}
+
 	if !is_stream {
 		return gmoErrorf("not suport yet")
 	}
-	return self.shop.OrderStreamOut(g_pos)
+	if isMargin(g_pos.Symbol()) {
+		return self.shop.OrderStreamOut(g_pos)
+	}
+	if g_pos.OrderType() != TYPE_BUY {
+		return gmoErrorf("cannot fix operation '%s'", g_pos.OrderType())
+	}
+	return self.shop.OrderStreamIn(TYPE_SELL, g_pos.Symbol(), g_pos.Size())
 }
 
 func (self *GmoHandler) Release() error {
