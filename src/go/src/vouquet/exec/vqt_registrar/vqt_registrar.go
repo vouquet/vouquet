@@ -85,6 +85,8 @@ func (self *worker) Do() error {
 
 	if self.themograpy == nil {
 		if err := self.open(); err != nil {
+			self.fail_cnt++
+			self.failedSleep()
 			return err
 		}
 	}
