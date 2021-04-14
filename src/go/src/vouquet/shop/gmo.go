@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	Symbol2Gmo map[string]string
-	Mode2Gmo   map[string]string
+	Symbol2Gmo       map[string]string
+	GmoSymbol2Symbol map[string]string
+	Mode2Gmo         map[string]string
 )
 
 func gmoErrorf(s string, msg ...interface{}) error {
@@ -30,6 +31,11 @@ func init() {
 	Symbol2Gmo[BCH2JPY_mgn] = gomocoin.SYMBOL_BCH_JPY
 	Symbol2Gmo[LTC2JPY_mgn] = gomocoin.SYMBOL_LTC_JPY
 	Symbol2Gmo[XRP2JPY_mgn] = gomocoin.SYMBOL_XRP_JPY
+
+	GmoSymbol2Symbol = make(map[string]string)
+	for symbol, gmo_symbol := range Symbol2Gmo {
+		GmoSymbol2Symbol[gmo_symbol] = symbol
+	}
 
 	Mode2Gmo = make(map[string]string)
 	Mode2Gmo[BTC2JPY_spt] = MODE_spot
@@ -176,11 +182,15 @@ func (self *GmoHandler) OrderFix(pos Position,
 	if !ok {
 		return gmoErrorf("unkown type at this store.")
 	}
+	symbol, ok := GmoSymbol2Symbol[g_pos.Symbol()]
+	if !ok {
+		return gmoErrorf("undefined symbol '%s'", g_pos.Symbol())
+	}
 
 	if !is_stream {
 		return gmoErrorf("not suport yet")
 	}
-	if isMargin(g_pos.Symbol()) {
+	if isMargin(symbol) {
 		return self.shop.OrderStreamOut(g_pos)
 	}
 	if g_pos.OrderType() != TYPE_BUY {
