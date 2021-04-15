@@ -84,6 +84,8 @@ func openGmo(conf *GmoConf, ctx context.Context) (*GmoHandler, error) {
 
 type GmoHandler struct {
 	shop *gomocoin.GoMOcoin
+
+	mapped  map[string]struct{}
 }
 
 func (self *GmoHandler) GetRate() (map[string]Rate, error) {
@@ -209,7 +211,67 @@ func (self *GmoHandler) getMarginFixes(key string) ([]Fix, error) {
 }
 
 func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
-	return nil, gmoErrorf("not yet")
+	fixes, err := self.shop.GetFixes(key)
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+
+	if self.mapped == nil {
+		self.mapped = map[string]struct{}{}
+		for _, fix := range fixes {
+			self.mapped[fix.Id()] = struct{}{}
+		}
+
+		return []Fix{}, nil
+	}
+
+	sell_buf := []*gomocoin.Fix{}
+	buy_buf := []*gomocoin.Fix{}
+	for _, fix := range fixes {
+		_, ok := self.mapped[fix.Id()]
+		if ok {
+			continue
+		}
+		switch fix.OrderType() {
+		case TYPE_SELL:
+			sell_buf = append(sell_buf, fix)
+		case TYPE_BUY:
+			buy_buf = append(buy_buf, fix)
+		}
+	}
+	if len(buy_buf) < 1 {
+		for _, s_fix := range sell_buf {
+			self.mapped[s_fix.Id()] = struct{}{}
+		}
+		return []Fix{}, nil
+	}
+
+	ret_fixes := []Fix{}
+	for _, s_fix := range sell_buf {
+		for _, b_fix := range buy_buf {
+			if b_fix.Size() != s_fix.Size() {
+				continue
+			}
+
+			date, err := s_fix.Date()
+			if err != nil {
+				return nil, gmoErrorf("%s", err)
+			}
+			ret_fixes = append(ret_fixes, &GmoSpotFix{
+				id: b_fix.Id() + s_fix.Id(),
+				symbol: s_fix.Symbol(),
+				o_type: TYPE_BUY,
+				size: s_fix.Size(),
+				price: s_fix.Price(),
+				yield: (s_fix.Price() - b_fix.Price()) * s_fix.Size(),
+				date: date,
+			})
+			self.mapped[b_fix.Id()] = struct{}{}
+			self.mapped[s_fix.Id()] = struct{}{}
+			break
+		}
+	}
+	return ret_fixes, nil
 }
 
 func (self *GmoHandler) Order(o_type string, symbol string,
@@ -311,13 +373,39 @@ func (self *GmoSpotPosition) OrderType() string {
 }
 
 type GmoSpotFix struct {
-/*
-	Id()        string
-	Symbol()    string
-	OrderType() string
-	Size()      float64
-	Price()     float64
-	Yield()     (float64, error)
-	Date()      (time.Time, error)
-*/
+	id     string
+	symbol string
+	o_type string
+	size   float64
+	price  float64
+	yield  float64
+	date   time.Time
+}
+
+func (self *GmoSpotFix) Id() string {
+	return self.id
+}
+
+func (self *GmoSpotFix) Symbol() string {
+	return self.symbol
+}
+
+func (self *GmoSpotFix) OrderType() string {
+	return self.o_type
+}
+
+func (self *GmoSpotFix) Size() float64 {
+	return self.size
+}
+
+func (self *GmoSpotFix) Price() float64 {
+	return self.price
+}
+
+func (self *GmoSpotFix) Yield() (float64, error) {
+	return self.yield, nil
+}
+
+func (self *GmoSpotFix) Date() (time.Time, error) {
+	return self.date, nil
 }
