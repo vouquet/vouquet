@@ -2,6 +2,7 @@ package shop
 
 import (
 	"fmt"
+	"time"
 	"context"
 )
 
@@ -124,7 +125,62 @@ func (self *GmoHandler) getMarginPositions(key string) ([]Position, error) {
 }
 
 func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
-	return nil, gmoErrorf("not yet")
+	as, err := self.shop.GetAsset()
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+
+	var no_fix_val float64
+	for _, a := range as {
+		if a.Symbol() != key {
+			continue
+		}
+
+		no_fix_val = a.Available()
+	}
+	if no_fix_val <= float64(0) {
+		return []Position{}, nil
+	}
+
+	pos := []Position{}
+	fixes, err := self.shop.GetFixes(key)
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+	for _, fix := range fixes {
+		if fix.OrderType() != TYPE_BUY {
+			continue
+		}
+
+		if no_fix_val < float64(fix.Price() * fix.Size()) {
+			break
+		}
+		pos = append(pos, fix)
+		no_fix_val -= float64(fix.Price() * fix.Size())
+	}
+
+	if no_fix_val <= float64(0) {
+		return pos, nil
+	}
+
+	rates, err := self.shop.GetRate()
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+	rate, ok := rates[key]
+	if !ok {
+		return nil, gmoErrorf("cannot get rate.")
+	}
+
+	price := rate.Ask()
+	pos = append(pos, &GmoSpotPosition{
+		id: fmt.Sprintf("%v", time.Now().Unix()),
+		symbol: key,
+		size: no_fix_val,
+		price: price,
+		o_type: TYPE_BUY,
+	})
+	return pos, nil
 }
 
 func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
@@ -163,40 +219,60 @@ func (self *GmoHandler) Order(o_type string, symbol string,
 		return gmoErrorf("%s", err)
 	}
 
-	if !is_stream {
-		return gmoErrorf("not suport yet")
+	if is_stream {
+		if err := self.shop.MarketOrder(o_type, key, size); err != nil {
+			return gmoErrorf("%s", err)
+		}
+		return nil
 	}
 	if isMargin(symbol) {
-		return self.shop.OrderStreamIn(o_type, key, size)
+		if o_type != TYPE_BUY {
+			return gmoErrorf("cannot operation '%s'", o_type)
+		}
 	}
-	if o_type != TYPE_BUY {
-		return gmoErrorf("cannot operation '%s'", o_type)
+	if err := self.shop.LimitOrder(o_type, key, size, price); err != nil {
+		return gmoErrorf("%s", err)
 	}
-	return self.shop.OrderStreamIn(o_type, key, size)
-
+	return nil
 }
 
 func (self *GmoHandler) OrderFix(pos Position,
 										is_stream bool, price float64) error {
-	g_pos, ok := pos.(*gomocoin.Position)
+	symbol, ok := GmoSymbol2Symbol[pos.Symbol()]
 	if !ok {
-		return gmoErrorf("unkown type at this store.")
-	}
-	symbol, ok := GmoSymbol2Symbol[g_pos.Symbol()]
-	if !ok {
-		return gmoErrorf("undefined symbol '%s'", g_pos.Symbol())
+		return gmoErrorf("undefined symbol '%s'", pos.Symbol())
 	}
 
-	if !is_stream {
-		return gmoErrorf("not suport yet")
-	}
 	if isMargin(symbol) {
-		return self.shop.OrderStreamOut(g_pos)
+		g_pos, ok := pos.(*gomocoin.Position)
+		if !ok {
+			return gmoErrorf("unkown type at this store.")
+		}
+		if is_stream {
+			if err := self.shop.MarketOrderFix(g_pos); err != nil {
+				return gmoErrorf("%s", err)
+			}
+			return nil
+		}
+		if err := self.shop.LimitOrderFix(g_pos, price); err != nil {
+			return gmoErrorf("%s", err)
+		}
+		return nil
 	}
-	if g_pos.OrderType() != TYPE_BUY {
-		return gmoErrorf("cannot fix operation '%s'", g_pos.OrderType())
+
+	if pos.OrderType() != TYPE_BUY {
+		return gmoErrorf("cannot fix operation '%s'", pos.OrderType())
 	}
-	return self.shop.OrderStreamIn(TYPE_SELL, g_pos.Symbol(), g_pos.Size())
+	if is_stream {
+		if err := self.shop.MarketOrder(TYPE_SELL, pos.Symbol(), pos.Size()); err != nil {
+			return gmoErrorf("%s", err)
+		}
+		return nil
+	}
+	if err := self.shop.LimitOrder(TYPE_SELL, pos.Symbol(), pos.Size(), price); err != nil {
+		return gmoErrorf("%s", err)
+	}
+	return nil
 }
 
 func (self *GmoHandler) Release() error {
@@ -204,4 +280,44 @@ func (self *GmoHandler) Release() error {
 		return gmoErrorf("%s", err)
 	}
 	return nil
+}
+
+type GmoSpotPosition struct {
+	id     string
+	symbol string
+	size   float64
+	price  float64
+	o_type string
+}
+
+func (self *GmoSpotPosition) Id() string {
+	return self.id
+}
+
+func (self *GmoSpotPosition) Symbol() string {
+	return self.symbol
+}
+
+func (self *GmoSpotPosition) Size() float64 {
+	return self.size
+}
+
+func (self *GmoSpotPosition) Price() float64 {
+	return self.price
+}
+
+func (self *GmoSpotPosition) OrderType() string {
+	return self.o_type
+}
+
+type GmoSpotFix struct {
+/*
+	Id()        string
+	Symbol()    string
+	OrderType() string
+	Size()      float64
+	Price()     float64
+	Yield()     (float64, error)
+	Date()      (time.Time, error)
+*/
 }
