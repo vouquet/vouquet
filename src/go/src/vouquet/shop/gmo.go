@@ -282,7 +282,7 @@ func (self *GmoHandler) Order(o_type string, symbol string,
 	}
 
 	if is_stream {
-		if err := self.shop.MarketOrder(o_type, key, size); err != nil {
+		if err := self.shop.MarketOrder(key, o_type, size); err != nil {
 			return gmoErrorf("%s", err)
 		}
 		return nil
@@ -292,7 +292,7 @@ func (self *GmoHandler) Order(o_type string, symbol string,
 			return gmoErrorf("cannot operation '%s'", o_type)
 		}
 	}
-	if err := self.shop.LimitOrder(o_type, key, size, price); err != nil {
+	if err := self.shop.LimitOrder(key, o_type, size, price); err != nil {
 		return gmoErrorf("%s", err)
 	}
 	return nil
@@ -326,12 +326,12 @@ func (self *GmoHandler) OrderFix(pos Position,
 		return gmoErrorf("cannot fix operation '%s'", pos.OrderType())
 	}
 	if is_stream {
-		if err := self.shop.MarketOrder(TYPE_SELL, pos.Symbol(), pos.Size()); err != nil {
+		if err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
 			return gmoErrorf("%s", err)
 		}
 		return nil
 	}
-	if err := self.shop.LimitOrder(TYPE_SELL, pos.Symbol(), pos.Size(), price); err != nil {
+	if err := self.shop.LimitOrder(pos.Symbol(), TYPE_SELL, pos.Size(), price); err != nil {
 		return gmoErrorf("%s", err)
 	}
 	return nil
