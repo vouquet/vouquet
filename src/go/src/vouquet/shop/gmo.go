@@ -281,16 +281,16 @@ func (self *GmoHandler) Order(o_type string, symbol string,
 		return gmoErrorf("%s", err)
 	}
 
+	if !isMargin(symbol) {
+		if o_type != TYPE_BUY {
+			return gmoErrorf("cannot operation '%s'", o_type)
+		}
+	}
 	if is_stream {
 		if err := self.shop.MarketOrder(key, o_type, size); err != nil {
 			return gmoErrorf("%s", err)
 		}
 		return nil
-	}
-	if !isMargin(symbol) {
-		if o_type != TYPE_BUY {
-			return gmoErrorf("cannot operation '%s'", o_type)
-		}
 	}
 	if err := self.shop.LimitOrder(key, o_type, size, price); err != nil {
 		return gmoErrorf("%s", err)
