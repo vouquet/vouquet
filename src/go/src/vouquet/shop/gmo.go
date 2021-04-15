@@ -287,7 +287,7 @@ func (self *GmoHandler) Order(o_type string, symbol string,
 		}
 		return nil
 	}
-	if isMargin(symbol) {
+	if !isMargin(symbol) {
 		if o_type != TYPE_BUY {
 			return gmoErrorf("cannot operation '%s'", o_type)
 		}
