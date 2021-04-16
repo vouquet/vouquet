@@ -269,7 +269,7 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 				self.halfmapped[b_fix.Id()] = b_fix.Size()
 			}
 
-			if self.halfmapped[b_fix.Id()] > self.halfmapped[s_fix.Id()] {
+			if self.halfmapped[b_fix.Id()] < self.halfmapped[s_fix.Id()] {
 				continue
 			}
 
@@ -278,7 +278,7 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 				return nil, gmoErrorf("%s", err)
 			}
 			price_diff := float64Sub(s_fix.Price(), b_fix.Price())
-			yield := float64Mul(price_diff, s_fix.Size())
+			yield := float64Mul(price_diff, self.halfmapped[s_fix.Id()])
 			ret_fixes = append(ret_fixes, &GmoSpotFix{
 				id: b_fix.Id() + s_fix.Id(),
 				symbol: s_fix.Symbol(),

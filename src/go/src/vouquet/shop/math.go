@@ -18,11 +18,11 @@ func float64Sub(x float64, y float64) float64 {
 }
 
 func float64Mul(x float64, y float64) float64 {
-	return toBtc(toSatoshi(x) * toSatoshi(y))
+	return (x * y)
 }
 
 func float64Div(x float64, y float64) float64 {
-	return toBtc(toSatoshi(x) / toSatoshi(y))
+	return (x / y)
 }
 
 func toSatoshi(x float64) int64 {
