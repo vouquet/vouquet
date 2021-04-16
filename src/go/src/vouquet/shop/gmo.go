@@ -2,6 +2,7 @@ package shop
 
 import (
 	"fmt"
+	"time"
 	"context"
 )
 
@@ -10,8 +11,9 @@ import (
 )
 
 var (
-	Symbol2Gmo map[string]string
-	Mode2Gmo   map[string]string
+	Symbol2Gmo       map[string]string
+	GmoSymbol2Symbol map[string]string
+	Mode2Gmo         map[string]string
 )
 
 func gmoErrorf(s string, msg ...interface{}) error {
@@ -30,6 +32,11 @@ func init() {
 	Symbol2Gmo[BCH2JPY_mgn] = gomocoin.SYMBOL_BCH_JPY
 	Symbol2Gmo[LTC2JPY_mgn] = gomocoin.SYMBOL_LTC_JPY
 	Symbol2Gmo[XRP2JPY_mgn] = gomocoin.SYMBOL_XRP_JPY
+
+	GmoSymbol2Symbol = make(map[string]string)
+	for symbol, gmo_symbol := range Symbol2Gmo {
+		GmoSymbol2Symbol[gmo_symbol] = symbol
+	}
 
 	Mode2Gmo = make(map[string]string)
 	Mode2Gmo[BTC2JPY_spt] = MODE_spot
@@ -77,6 +84,9 @@ func openGmo(conf *GmoConf, ctx context.Context) (*GmoHandler, error) {
 
 type GmoHandler struct {
 	shop *gomocoin.GoMOcoin
+
+	mapped      map[string]struct{}
+	halfmapped  map[string]float64
 }
 
 func (self *GmoHandler) GetRate() (map[string]Rate, error) {
@@ -97,6 +107,14 @@ func (self *GmoHandler) GetPositions(symbol string) ([]Position, error) {
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
 	}
+
+	if isMargin(symbol) {
+		return self.getMarginPositions(key)
+	}
+	return self.getSpotPositions(key)
+}
+
+func (self *GmoHandler) getMarginPositions(key string) ([]Position, error) {
 	poss, err := self.shop.GetPositions(key)
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
@@ -109,12 +127,79 @@ func (self *GmoHandler) GetPositions(symbol string) ([]Position, error) {
 	return i_poss, nil
 }
 
+func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
+	as, err := self.shop.GetAsset()
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+
+	var no_fix_val float64
+	for _, a := range as {
+		if a.Symbol() != key {
+			continue
+		}
+
+		no_fix_val = a.Available()
+	}
+	if no_fix_val <= float64(0) {
+		return []Position{}, nil
+	}
+
+	pos := []Position{}
+	fixes, err := self.shop.GetFixes(key)
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+	for _, fix := range fixes {
+		if fix.OrderType() != TYPE_BUY {
+			continue
+		}
+
+		if no_fix_val < fix.Size() {
+			break
+		}
+
+		pos = append(pos, fix)
+		no_fix_val = float64Sub(no_fix_val, fix.Size())
+	}
+
+	if no_fix_val <= float64(0) {
+		return pos, nil
+	}
+
+	rates, err := self.shop.GetRate()
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+	rate, ok := rates[key]
+	if !ok {
+		return nil, gmoErrorf("cannot get rate.")
+	}
+
+	price := rate.Ask()
+	pos = append(pos, &GmoSpotPosition{
+		id: fmt.Sprintf("%v", time.Now().Unix()),
+		symbol: key,
+		size: no_fix_val,
+		price: price,
+		o_type: TYPE_BUY,
+	})
+	return pos, nil
+}
+
 func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 	key, err := getGmoKey(symbol)
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
 	}
 
+	if isMargin(symbol) {
+		return self.getMarginFixes(key)
+	}
+	return self.getSpotFixes(key)
+}
+
+func (self *GmoHandler) getMarginFixes(key string) ([]Fix, error) {
 	fixes, err := self.shop.GetFixes(key)
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
@@ -127,20 +212,160 @@ func (self *GmoHandler) GetFixes(symbol string) ([]Fix, error) {
 	return i_fixes, nil
 }
 
-func (self *GmoHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
+func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
+	fixes, err := self.shop.GetFixes(key)
+	if err != nil {
+		return nil, gmoErrorf("%s", err)
+	}
+
+	if self.mapped == nil {
+		self.mapped = make(map[string]struct{})
+		self.halfmapped = make(map[string]float64)
+		detect_sell := false
+
+		for _, fix := range fixes {
+			if !detect_sell && fix.OrderType() == TYPE_BUY {
+				self.halfmapped[fix.Id()] = fix.Size()
+				continue
+			}
+			if !detect_sell {
+				detect_sell = true
+			}
+
+			self.mapped[fix.Id()] = struct{}{}
+		}
+		return []Fix{}, nil
+	}
+
+	sell_buf := []*gomocoin.Fix{}
+	buy_buf := []*gomocoin.Fix{}
+	for _, fix := range fixes {
+		_, ok := self.mapped[fix.Id()]
+		if ok {
+			continue
+		}
+		switch fix.OrderType() {
+		case TYPE_SELL:
+			sell_buf = append(sell_buf, fix)
+		case TYPE_BUY:
+			buy_buf = append(buy_buf, fix)
+		}
+	}
+	if len(buy_buf) < 1 {
+		for _, s_fix := range sell_buf {
+			self.mapped[s_fix.Id()] = struct{}{}
+		}
+		return []Fix{}, nil
+	}
+
+	ret_fixes := []Fix{}
+	for _, s_fix := range sell_buf {
+		if _, ok := self.halfmapped[s_fix.Id()]; !ok {
+			self.halfmapped[s_fix.Id()] = s_fix.Size()
+		}
+
+		for _, b_fix := range buy_buf {
+			if _, ok := self.halfmapped[b_fix.Id()]; !ok {
+				self.halfmapped[b_fix.Id()] = b_fix.Size()
+			}
+
+			if self.halfmapped[b_fix.Id()] < self.halfmapped[s_fix.Id()] {
+				continue
+			}
+
+			date, err := s_fix.Date()
+			if err != nil {
+				return nil, gmoErrorf("%s", err)
+			}
+			price_diff := float64Sub(s_fix.Price(), b_fix.Price())
+			yield := float64Mul(price_diff, self.halfmapped[s_fix.Id()])
+			ret_fixes = append(ret_fixes, &GmoSpotFix{
+				id: b_fix.Id() + s_fix.Id(),
+				symbol: s_fix.Symbol(),
+				o_type: TYPE_SELL,
+				size: s_fix.Size(),
+				price: s_fix.Price(),
+				yield: yield,
+				date: date,
+			})
+
+			delete(self.halfmapped, b_fix.Id())
+			self.mapped[b_fix.Id()] = struct{}{}
+
+			size_diff := float64Sub(self.halfmapped[s_fix.Id()], self.halfmapped[b_fix.Id()])
+			if size_diff > float64(0) {
+				self.halfmapped[s_fix.Id()] = size_diff
+				continue
+			}
+			delete(self.halfmapped, s_fix.Id())
+			self.mapped[s_fix.Id()] = struct{}{}
+			break
+		}
+	}
+	return ret_fixes, nil
+}
+
+func (self *GmoHandler) Order(o_type string, symbol string,
+							size float64, is_stream bool, price float64) error {
 	key, err := getGmoKey(symbol)
 	if err != nil {
 		return gmoErrorf("%s", err)
 	}
-	return self.shop.OrderStreamIn(o_type, key, size)
+
+	if !isMargin(symbol) {
+		if o_type != TYPE_BUY {
+			return gmoErrorf("cannot operation '%s'", o_type)
+		}
+	}
+	if is_stream {
+		if err := self.shop.MarketOrder(key, o_type, size); err != nil {
+			return gmoErrorf("%s", err)
+		}
+		return nil
+	}
+	if err := self.shop.LimitOrder(key, o_type, size, price); err != nil {
+		return gmoErrorf("%s", err)
+	}
+	return nil
 }
 
-func (self *GmoHandler) OrderStreamOut(pos Position) error {
-	g_pos, ok := pos.(*gomocoin.Position)
+func (self *GmoHandler) OrderFix(pos Position,
+										is_stream bool, price float64) error {
+	symbol, ok := GmoSymbol2Symbol[pos.Symbol()]
 	if !ok {
-		return gmoErrorf("unkown type at this store.")
+		return gmoErrorf("undefined symbol '%s'", pos.Symbol())
 	}
-	return self.shop.OrderStreamOut(g_pos)
+
+	if isMargin(symbol) {
+		g_pos, ok := pos.(*gomocoin.Position)
+		if !ok {
+			return gmoErrorf("unkown type at this store.")
+		}
+		if is_stream {
+			if err := self.shop.MarketOrderFix(g_pos); err != nil {
+				return gmoErrorf("%s", err)
+			}
+			return nil
+		}
+		if err := self.shop.LimitOrderFix(g_pos, price); err != nil {
+			return gmoErrorf("%s", err)
+		}
+		return nil
+	}
+
+	if pos.OrderType() != TYPE_BUY {
+		return gmoErrorf("cannot fix operation '%s'", pos.OrderType())
+	}
+	if is_stream {
+		if err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
+			return gmoErrorf("%s", err)
+		}
+		return nil
+	}
+	if err := self.shop.LimitOrder(pos.Symbol(), TYPE_SELL, pos.Size(), price); err != nil {
+		return gmoErrorf("%s", err)
+	}
+	return nil
 }
 
 func (self *GmoHandler) Release() error {
@@ -148,4 +373,70 @@ func (self *GmoHandler) Release() error {
 		return gmoErrorf("%s", err)
 	}
 	return nil
+}
+
+type GmoSpotPosition struct {
+	id     string
+	symbol string
+	size   float64
+	price  float64
+	o_type string
+}
+
+func (self *GmoSpotPosition) Id() string {
+	return self.id
+}
+
+func (self *GmoSpotPosition) Symbol() string {
+	return self.symbol
+}
+
+func (self *GmoSpotPosition) Size() float64 {
+	return self.size
+}
+
+func (self *GmoSpotPosition) Price() float64 {
+	return self.price
+}
+
+func (self *GmoSpotPosition) OrderType() string {
+	return self.o_type
+}
+
+type GmoSpotFix struct {
+	id     string
+	symbol string
+	o_type string
+	size   float64
+	price  float64
+	yield  float64
+	date   time.Time
+}
+
+func (self *GmoSpotFix) Id() string {
+	return self.id
+}
+
+func (self *GmoSpotFix) Symbol() string {
+	return self.symbol
+}
+
+func (self *GmoSpotFix) OrderType() string {
+	return self.o_type
+}
+
+func (self *GmoSpotFix) Size() float64 {
+	return self.size
+}
+
+func (self *GmoSpotFix) Price() float64 {
+	return self.price
+}
+
+func (self *GmoSpotFix) Yield() (float64, error) {
+	return self.yield, nil
+}
+
+func (self *GmoSpotFix) Date() (time.Time, error) {
+	return self.date, nil
 }

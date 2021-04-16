@@ -137,7 +137,7 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 		if o.Side != TYPE_SELL {
 			continue
 		}
-		no_fix_val -= float64(o.Price * o.Size)
+		no_fix_val = float64Sub(no_fix_val, o.Size)
 	}
 
 	pos := []Position{}
@@ -154,11 +154,11 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 			continue
 		}
 
-		if no_fix_val < float64(order.Price * order.Size) {
+		if no_fix_val < order.Size {
 			break
 		}
 		pos = append(pos, &BitflyerPosition{order:order})
-		no_fix_val -= float64(order.Price * order.Size)
+		no_fix_val = float64Sub(no_fix_val, order.Size)
 	}
 
 	if no_fix_val <= float64(0) {
@@ -175,7 +175,8 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 	}
 
 	price := rate.Ask()
-	size := no_fix_val - (no_fix_val * bitflyer.FEE_TRADE_RATE)
+	fee := float64Mul(no_fix_val, bitflyer.FEE_TRADE_RATE)
+	size := float64Sub(no_fix_val, fee)
 	dummy_order := &bitflyer.Order{
 		Id: time.Now().Unix(),
 		Product: key,
@@ -203,7 +204,16 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 
 	if self.mapped == nil {
 		self.mapped = map[int64]struct{}{}
+
+		detect_sell := false
 		for _, order := range c_os {
+			if !detect_sell && order.Side == TYPE_BUY {
+				continue
+			}
+			if !detect_sell {
+				detect_sell = true
+			}
+
 			self.mapped[order.Id] = struct{}{}
 		}
 
@@ -233,20 +243,24 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 
 	fixes := []Fix{}
 	for _, s_order := range sell_buf {
-		search_size := s_order.Size + (s_order.Size * bitflyer.FEE_TRADE_RATE * 2)
+		duo_rate := float64Mul(bitflyer.FEE_TRADE_RATE, float64(2))
+		fee := float64Mul(s_order.Size, duo_rate)
+		search_size := float64Add(s_order.Size, fee)
 
 		for _, b_order := range buy_buf {
 			if b_order.Size != search_size {
 				continue
 			}
 
+			price_diff := float64Sub(s_order.Price, b_order.Price)
+			yield := float64Mul(price_diff, s_order.Size)
 			fixes = append(fixes, &BitflyerDummyFix{
 				id: fmt.Sprintf("%v-%v", b_order.Id, s_order.Id),
 				symbol: b_order.Product,
 				o_type: TYPE_BUY,
 				size: s_order.Size,
 				price: s_order.Price,
-				yield: (s_order.Price - b_order.Price) * s_order.Size,
+				yield: yield,
 				date: time.Now(),
 			})
 			self.mapped[b_order.Id] = struct{}{}
@@ -257,7 +271,8 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 	return fixes, nil
 }
 
-func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size float64) error {
+func (self *BitflyerHandler) Order(o_type string, symbol string,
+							size float64, is_stream bool, price float64) error {
 	if isMargin(symbol) {
 		return bitflyerErrorf("cannot support 'margin' order.")
 	}
@@ -270,18 +285,34 @@ func (self *BitflyerHandler) OrderStreamIn(o_type string, symbol string, size fl
 	}
 
 	//twice fee is stock, that use when order of buy and sell.
-	fee_ed_size := size + (size * bitflyer.FEE_TRADE_RATE * 2)
-	if _, err := self.shop.MarketOrder(key, o_type, fee_ed_size); err != nil {
+	duo_rate := float64Mul(bitflyer.FEE_TRADE_RATE, float64(2))
+	fee := float64Mul(size, duo_rate)
+	fee_ed_size := float64Add(size, fee)
+
+	if is_stream {
+		if _, err := self.shop.MarketOrder(key, o_type, fee_ed_size); err != nil {
+			return bitflyerErrorf("%s", err)
+		}
+		return nil
+	}
+	if _, err := self.shop.LimitOrder(key, o_type, fee_ed_size, price); err != nil {
 		return bitflyerErrorf("%s", err)
 	}
 	return nil
 }
 
-func (self *BitflyerHandler) OrderStreamOut(pos Position) error {
+func (self *BitflyerHandler) OrderFix(pos Position,
+										is_stream bool, price float64) error {
 	if pos.OrderType() != TYPE_BUY {
 		return bitflyerErrorf("cannot support type of order on position.")
 	}
-	if _, err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
+	if is_stream {
+		if _, err := self.shop.MarketOrder(pos.Symbol(), TYPE_SELL, pos.Size()); err != nil {
+			return bitflyerErrorf("%s", err)
+		}
+		return nil
+	}
+	if _, err := self.shop.LimitOrder(pos.Symbol(), TYPE_SELL, pos.Size(), price); err != nil {
 		return bitflyerErrorf("%s", err)
 	}
 	return nil
