@@ -204,7 +204,16 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 
 	if self.mapped == nil {
 		self.mapped = map[int64]struct{}{}
+
+		detect_sell := false
 		for _, order := range c_os {
+			if !detect_sell && order.Side == TYPE_BUY {
+				continue
+			}
+			if !detect_sell {
+				detect_sell = true
+			}
+
 			self.mapped[order.Id] = struct{}{}
 		}
 

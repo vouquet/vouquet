@@ -219,10 +219,18 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 
 	if self.mapped == nil {
 		self.mapped = map[string]struct{}{}
+		detect_sell := false
+
 		for _, fix := range fixes {
+			if !detect_sell && fix.OrderType() == TYPE_BUY {
+				continue
+			}
+			if !detect_sell {
+				detect_sell = true
+			}
+
 			self.mapped[fix.Id()] = struct{}{}
 		}
-
 		return []Fix{}, nil
 	}
 
@@ -249,6 +257,8 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 
 	ret_fixes := []Fix{}
 	for _, s_fix := range sell_buf {
+		no_fix_size := s_fix.Size()
+
 		for _, b_fix := range buy_buf {
 			if b_fix.Size() != s_fix.Size() {
 				continue
