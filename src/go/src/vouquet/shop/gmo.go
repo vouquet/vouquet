@@ -1,7 +1,5 @@
 package shop
 
-import "log"
-
 import (
 	"fmt"
 	"time"
@@ -136,15 +134,12 @@ func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
 
 	var no_fix_val float64
 	for _, a := range as {
-		log.Println("symbol:", a.Symbol())
-		log.Println("val", a.Available(), a.Amount())
 		if a.Symbol() != key {
 			continue
 		}
 
 		no_fix_val = a.Available()
 	}
-	log.Println("no fix val:", no_fix_val)
 	if no_fix_val <= float64(0) {
 		return []Position{}, nil
 	}
@@ -154,27 +149,20 @@ func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
 	}
-	log.Println("fixes:", len(fixes))
 	for _, fix := range fixes {
-		log.Println("fix:", fix)
 		if fix.OrderType() != TYPE_BUY {
 			continue
 		}
 
 		if no_fix_val < fix.Size() {
-			log.Println("break detected", no_fix_val, fix.Size())
 			break
 		}
 
 		pos = append(pos, fix)
-		log.Println("fix size", float64Sub(fix.Size(), fix.Size()))
-		log.Println("no_fix_val", float64Sub(no_fix_val, no_fix_val))
 		no_fix_val = float64Sub(no_fix_val, fix.Size())
-		log.Println("mathed no_fix_val", no_fix_val)
 	}
 
 	if no_fix_val <= float64(0) {
-		log.Println("possize", len(pos))
 		return pos, nil
 	}
 
@@ -195,7 +183,6 @@ func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
 		price: price,
 		o_type: TYPE_BUY,
 	})
-	log.Println("possize(break", len(pos))
 	return pos, nil
 }
 
@@ -271,13 +258,15 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 			if err != nil {
 				return nil, gmoErrorf("%s", err)
 			}
+			price_diff := float64Sub(s_fix.Price(), b_fix.Price())
+			yield := float64Mul(price_diff, s_fix.Size())
 			ret_fixes = append(ret_fixes, &GmoSpotFix{
 				id: b_fix.Id() + s_fix.Id(),
 				symbol: s_fix.Symbol(),
 				o_type: TYPE_BUY,
 				size: s_fix.Size(),
 				price: s_fix.Price(),
-				yield: (s_fix.Price() - b_fix.Price()) * s_fix.Size(),
+				yield: yield,
 				date: date,
 			})
 			self.mapped[b_fix.Id()] = struct{}{}

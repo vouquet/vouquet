@@ -137,7 +137,7 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 		if o.Side != TYPE_SELL {
 			continue
 		}
-		no_fix_val -= o.Size
+		no_fix_val = float64Sub(no_fix_val, o.Size)
 	}
 
 	pos := []Position{}
@@ -158,7 +158,7 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 			break
 		}
 		pos = append(pos, &BitflyerPosition{order:order})
-		no_fix_val -= order.Size
+		no_fix_val = float64Sub(no_fix_val, order.Size)
 	}
 
 	if no_fix_val <= float64(0) {
@@ -175,7 +175,8 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 	}
 
 	price := rate.Ask()
-	size := no_fix_val - (no_fix_val * bitflyer.FEE_TRADE_RATE)
+	fee := float64Mul(no_fix_val, bitflyer.FEE_TRADE_RATE)
+	size := float64Sub(no_fix_val, fee)
 	dummy_order := &bitflyer.Order{
 		Id: time.Now().Unix(),
 		Product: key,
@@ -233,20 +234,24 @@ func (self *BitflyerHandler) GetFixes(symbol string) ([]Fix, error) {
 
 	fixes := []Fix{}
 	for _, s_order := range sell_buf {
-		search_size := s_order.Size + (s_order.Size * bitflyer.FEE_TRADE_RATE * 2)
+		duo_rate := float64Mul(bitflyer.FEE_TRADE_RATE, float64(2))
+		fee := float64Mul(s_order.Size, duo_rate)
+		search_size := float64Add(s_order.Size, fee)
 
 		for _, b_order := range buy_buf {
 			if b_order.Size != search_size {
 				continue
 			}
 
+			price_diff := float64Sub(s_order.Price, b_order.Price)
+			yield := float64Mul(price_diff, s_order.Size)
 			fixes = append(fixes, &BitflyerDummyFix{
 				id: fmt.Sprintf("%v-%v", b_order.Id, s_order.Id),
 				symbol: b_order.Product,
 				o_type: TYPE_BUY,
 				size: s_order.Size,
 				price: s_order.Price,
-				yield: (s_order.Price - b_order.Price) * s_order.Size,
+				yield: yield,
 				date: time.Now(),
 			})
 			self.mapped[b_order.Id] = struct{}{}
@@ -271,7 +276,9 @@ func (self *BitflyerHandler) Order(o_type string, symbol string,
 	}
 
 	//twice fee is stock, that use when order of buy and sell.
-	fee_ed_size := size + (size * bitflyer.FEE_TRADE_RATE * 2)
+	duo_rate := float64Mul(bitflyer.FEE_TRADE_RATE, float64(2))
+	fee := float64Mul(size, duo_rate)
+	fee_ed_size := float64Add(size, fee)
 
 	if is_stream {
 		if _, err := self.shop.MarketOrder(key, o_type, fee_ed_size); err != nil {
