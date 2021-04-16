@@ -28,7 +28,7 @@
   version = "0.0.2"
 [[constraint]]
   name = "github.com/vouquet/go-gmo-coin"
-  version = "0.0.3"
+  version = "0.0.4"
 [[constraint]]
   name = "github.com/vouquet/go-bitflyer"
   version = "0.0.2"
