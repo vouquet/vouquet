@@ -137,7 +137,7 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 		if o.Side != TYPE_SELL {
 			continue
 		}
-		no_fix_val -= float64(o.Price * o.Size)
+		no_fix_val -= o.Size
 	}
 
 	pos := []Position{}
@@ -154,11 +154,11 @@ func (self *BitflyerHandler) GetPositions(symbol string) ([]Position, error) {
 			continue
 		}
 
-		if no_fix_val < float64(order.Price * order.Size) {
+		if no_fix_val < order.Size {
 			break
 		}
 		pos = append(pos, &BitflyerPosition{order:order})
-		no_fix_val -= float64(order.Price * order.Size)
+		no_fix_val -= order.Size
 	}
 
 	if no_fix_val <= float64(0) {

@@ -1,5 +1,7 @@
 package shop
 
+import "log"
+
 import (
 	"fmt"
 	"time"
@@ -134,12 +136,15 @@ func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
 
 	var no_fix_val float64
 	for _, a := range as {
+		log.Println("symbol:", a.Symbol())
+		log.Println("val", a.Available(), a.Amount())
 		if a.Symbol() != key {
 			continue
 		}
 
 		no_fix_val = a.Available()
 	}
+	log.Println("no fix val:", no_fix_val)
 	if no_fix_val <= float64(0) {
 		return []Position{}, nil
 	}
@@ -149,19 +154,27 @@ func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
 	if err != nil {
 		return nil, gmoErrorf("%s", err)
 	}
+	log.Println("fixes:", len(fixes))
 	for _, fix := range fixes {
+		log.Println("fix:", fix)
 		if fix.OrderType() != TYPE_BUY {
 			continue
 		}
 
-		if no_fix_val < float64(fix.Price() * fix.Size()) {
+		if no_fix_val < fix.Size() {
+			log.Println("break detected", no_fix_val, fix.Size())
 			break
 		}
+
 		pos = append(pos, fix)
-		no_fix_val -= float64(fix.Price() * fix.Size())
+		log.Println("fix size", float64Sub(fix.Size(), fix.Size()))
+		log.Println("no_fix_val", float64Sub(no_fix_val, no_fix_val))
+		no_fix_val = float64Sub(no_fix_val, fix.Size())
+		log.Println("mathed no_fix_val", no_fix_val)
 	}
 
 	if no_fix_val <= float64(0) {
+		log.Println("possize", len(pos))
 		return pos, nil
 	}
 
@@ -182,6 +195,7 @@ func (self *GmoHandler) getSpotPositions(key string) ([]Position, error) {
 		price: price,
 		o_type: TYPE_BUY,
 	})
+	log.Println("possize(break", len(pos))
 	return pos, nil
 }
 
