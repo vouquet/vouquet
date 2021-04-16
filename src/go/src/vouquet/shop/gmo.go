@@ -85,7 +85,8 @@ func openGmo(conf *GmoConf, ctx context.Context) (*GmoHandler, error) {
 type GmoHandler struct {
 	shop *gomocoin.GoMOcoin
 
-	mapped  map[string]struct{}
+	mapped      map[string]struct{}
+	halfmapped  map[string]float64
 }
 
 func (self *GmoHandler) GetRate() (map[string]Rate, error) {
@@ -218,11 +219,13 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 	}
 
 	if self.mapped == nil {
-		self.mapped = map[string]struct{}{}
+		self.mapped = make(map[string]struct{})
+		self.halfmapped = make(map[string]float64)
 		detect_sell := false
 
 		for _, fix := range fixes {
 			if !detect_sell && fix.OrderType() == TYPE_BUY {
+				self.halfmapped[fix.Id()] = fix.Size()
 				continue
 			}
 			if !detect_sell {
@@ -257,10 +260,16 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 
 	ret_fixes := []Fix{}
 	for _, s_fix := range sell_buf {
-		no_fix_size := s_fix.Size()
+		if _, ok := self.halfmapped[s_fix.Id()]; !ok {
+			self.halfmapped[s_fix.Id()] = s_fix.Size()
+		}
 
 		for _, b_fix := range buy_buf {
-			if b_fix.Size() != s_fix.Size() {
+			if _, ok := self.halfmapped[b_fix.Id()]; !ok {
+				self.halfmapped[b_fix.Id()] = b_fix.Size()
+			}
+
+			if self.halfmapped[b_fix.Id()] > self.halfmapped[s_fix.Id()] {
 				continue
 			}
 
@@ -279,7 +288,16 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 				yield: yield,
 				date: date,
 			})
+
+			delete(self.halfmapped, b_fix.Id())
 			self.mapped[b_fix.Id()] = struct{}{}
+
+			size_diff := float64Sub(self.halfmapped[s_fix.Id()], self.halfmapped[b_fix.Id()])
+			if size_diff > float64(0) {
+				self.halfmapped[s_fix.Id()] = size_diff
+				continue
+			}
+			delete(self.halfmapped, s_fix.Id())
 			self.mapped[s_fix.Id()] = struct{}{}
 			break
 		}
