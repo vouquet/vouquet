@@ -273,7 +273,7 @@ func (self *GmoHandler) getSpotFixes(key string) ([]Fix, error) {
 			ret_fixes = append(ret_fixes, &GmoSpotFix{
 				id: b_fix.Id() + s_fix.Id(),
 				symbol: s_fix.Symbol(),
-				o_type: TYPE_BUY,
+				o_type: TYPE_SELL,
 				size: s_fix.Size(),
 				price: s_fix.Price(),
 				yield: yield,
