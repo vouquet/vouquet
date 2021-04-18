@@ -21,6 +21,8 @@ type Config struct {
 	DBServer string
 	DBName   string
 	DBPort   int
+
+	Works  []*Work `toml:"Work"`
 }
 
 func (self *Config) sqlcred() string {
@@ -29,7 +31,7 @@ func (self *Config) sqlcred() string {
 	return cred
 }
 
-func loadConfig(path string) (*Config, error) {
+func LoadConfig(path string) (*Config, error) {
 	fpath := filepath.Clean(path)
 
 	var conf Config
@@ -37,4 +39,11 @@ func loadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	return &conf, nil
+}
+
+type Work struct {
+	Florist  string  `toml:florist`
+	Soil     string  `toml:soil`
+	Seed     string  `toml:seed`
+	Size     float64 `toml:size`
 }

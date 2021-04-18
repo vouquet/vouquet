@@ -6,7 +6,6 @@ import (
 	"flag"
 	"time"
 	"context"
-	"strconv"
 )
 
 import (
@@ -17,18 +16,12 @@ import (
 
 const (
 	SELF_NAME string = "vqt_florister"
-	USAGE string = "[-version] [-c <config path>] <NAMEofFlorist> <SEED> <SOIL> <SIZE>"
+	USAGE string = "[-version] [-c <config path>]"
 )
 
 var (
 	Version string
-
 	Cpath  string
-
-	Name   string
-	Seed string
-	Soil   string
-	Size   float64
 )
 
 type logger struct {}
@@ -48,85 +41,164 @@ func (self *logger) WriteDebug(s string, msg ...interface{}) {
 	fmt.Fprintf(os.Stdout, tstr + " [DEBUG] " + s + "\n" , msg...)
 }
 
+type Worker struct {
+	fl     *vouquet.Florist
+	st_ch  chan *farm.State
+
+	work   *farm.Work
+
+	before_state *farm.State
+
+	log    *logger
+	mtx    *lock.TryMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func NewWorker(b_ctx context.Context, log *logger, cfg *farm.Config,
+						wk *farm.Work, status []*farm.State) (*Worker, error) {
+	ctx, cancel := context.WithCancel(b_ctx)
+	pl, err := farm.NewFlowerpot(wk.Soil, wk.Seed, cfg, ctx, log)
+	if err != nil {
+		return nil, err
+	}
+	fl, err := vouquet.NewFlorist(wk.Florist, pl, status, log)
+	if err != nil {
+		return nil, err
+	}
+	fl.SetSize(wk.Size)
+
+	return &Worker{
+		fl: fl,
+		st_ch: make(chan *farm.State),
+		work: wk,
+
+		log: log,
+		mtx: lock.NewTryMutex(b_ctx),
+		ctx: ctx,
+		cancel: cancel,
+	}, nil
+}
+
+func (self *Worker) GetTarget() (string, string) {
+	return self.work.Soil, self.work.Seed
+}
+
+func (self *Worker) PostState(state *farm.State) {
+	ok, err := self.mtx.TryLock()
+	if err != nil {
+		if err == lock.ERR_CONTEXT_CANCEL {
+			return
+		}
+		return
+	}
+	if !ok {
+		return
+	}
+
+	go func() {
+		defer self.mtx.Unlock()
+
+		if self.before_state != nil {
+			if self.before_state.Date().Equal(state.Date()) {
+				self.log.WriteErr("%s got same the time in state(%s, %s).",
+							self.work.Florist, self.work.Soil, self.work.Seed)
+				return
+			}
+		}
+		self.before_state = state
+
+		select {
+		case <- self.ctx.Done():
+		case self.st_ch <- state:
+		}
+	}()
+}
+
+func (self *Worker) Run() error {
+	return self.fl.Run(self.ctx, self.st_ch)
+}
+
+func (self *Worker) Done() error {
+	self.cancel()
+	close(self.st_ch)
+	return self.fl.Release()
+}
+
 func florister() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	log := new(logger)
 
-	r, err := farm.OpenRegistry(Cpath, ctx, log)
+	cfg, err := farm.LoadConfig(Cpath)
+	if err != nil {
+		return err
+	}
+	r, err := farm.OpenRegistry(cfg, ctx, log)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
+	log.WriteMsg("Start %s %s", SELF_NAME, Version)
+
 	now := time.Now()
 	start := now.AddDate(0, 0, -1)
-	init_status, err := r.GetStatus(Soil, Seed, start, now)
-	if err != nil {
-		return err
+	workers := []*Worker{}
+	for _, work := range cfg.Works {
+		log.WriteDebug("LoadWorker %s: soil: %s, seed: %s, size: %f", work.Florist, work.Soil, work.Seed, work.Size)
+		init_status, err := r.GetStatus(work.Soil, work.Seed, start, now)
+		if err != nil {
+			return err
+		}
+
+		worker, err := NewWorker(ctx, log, cfg, work, init_status)
+		if err != nil {
+			return err
+		}
+		workers = append(workers, worker)
+
+		go func(worker *Worker) {
+			if err := worker.Run(); err != nil {
+				log.WriteErr("%s", err)
+			}
+			defer worker.Done()
+		}(worker)
 	}
 
-	pl, err := farm.NewFlowerpot(Soil, Seed, Cpath, ctx, log)
-	if err != nil {
-		return err
-	}
-	fl, err := vouquet.NewFlorist(Name, pl, init_status, log)
-	if err != nil {
-		return err
-	}
-	defer fl.Release()
-	fl.SetSize(Size)
+	mtx := lock.NewTryMutex(ctx)
+	t := time.NewTicker(time.Second)
+	for {
+		select {
+		case <- ctx.Done():
+			return nil
+		case <-t.C:
+			ok, err := mtx.TryLock()
+			if err != nil {
+				if err == lock.ERR_CONTEXT_CANCEL {
+					return nil
+				}
+				return err
+			}
+			if !ok {
+				continue
+			}
 
-	st_ch := make(chan *farm.State)
-	go func() {
-		defer close(st_ch)
-
-		mtx := lock.NewTryMutex(ctx)
-		t := time.NewTicker(time.Second)
-		var before time.Time
-		for {
-			select {
-			case <- ctx.Done():
-				return
-			case <-t.C:
-				go func() {
-					ok, err := mtx.TryLock()
-					if err != nil {
-						if err == lock.ERR_CONTEXT_CANCEL {
-							return
-						}
-						log.WriteErr("Cannot lock: '%s'", err)
-						return
-					}
-					if !ok {
-						return
-					}
-					defer mtx.Unlock()
-
-					state, err := r.GetLastState(Soil, Seed)
+			for _, worker := range workers {
+				go func(worker *Worker) {
+					soil, seed := worker.GetTarget()
+					state, err := r.GetLastState(soil, seed)
 					if err != nil {
 						log.WriteErr("Cannot get status: '%s'", err)
 						return
 					}
-					if state.Date().Equal(before) {
-						log.WriteErr("Same the time in state.")
-						return
-					}
-					before = state.Date()
 
-					select {
-					case <- ctx.Done():
-						return
-					case st_ch <- state:
-					}
-				}()
+					worker.PostState(state)
+				}(worker)
 			}
-		}
-	}()
 
-	log.WriteMsg("Start %s %s", SELF_NAME, Version)
-	if err := fl.Run(ctx, st_ch); err != nil {
-		return err
+			mtx.Unlock()
+		}
 	}
 	return nil
 }
@@ -148,27 +220,10 @@ func init() {
 		os.Exit(0)
 	}
 
-	if flag.NArg() < 4 {
-		die("usage : %s %s", SELF_NAME, USAGE)
-	}
-
-	name := flag.Arg(0)
-	seed := flag.Arg(1)
-	soil := flag.Arg(2)
-	size, err := strconv.ParseFloat(flag.Arg(3), 64)
-	if err != nil {
-		die("cannot convert size: '%s", err)
-	}
-
 	if c_path == "" {
 		die("empty path")
 	}
-
 	Cpath = c_path
-	Name = name
-	Seed = seed
-	Soil = soil
-	Size = size
 }
 
 func main() {
@@ -177,4 +232,3 @@ func main() {
 	}
 
 }
-

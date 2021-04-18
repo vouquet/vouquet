@@ -43,7 +43,7 @@ func (self *logger) WriteDebug(s string, msg ...interface{}) {
 
 type worker struct {
 	soil_name   string
-	c_path      string
+	cfg         *farm.Config
 
 	registry    *farm.Registry
 	themograpy  *farm.Themography
@@ -55,10 +55,10 @@ type worker struct {
 	mtx         *lock.TryMutex
 }
 
-func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Context, log *logger) *worker {
+func NewWorker(r *farm.Registry, soil_name string, cfg *farm.Config, ctx context.Context, log *logger) *worker {
 	return &worker{
 		soil_name: soil_name,
-		c_path: c_path,
+		cfg: cfg,
 		registry:r,
 
 		fail_cnt: 60,
@@ -165,7 +165,7 @@ func (self *worker) ThemograpyRelease() error {
 }
 
 func (self *worker) open() error {
-	t, err := farm.NewThemograpy(self.c_path, self.soil_name, self.ctx)
+	t, err := farm.NewThemograpy(self.cfg, self.soil_name, self.ctx)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,11 @@ func registrar() error {
 	log := new(logger)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	r, err := farm.OpenRegistry(Cpath, ctx, log)
+	cfg, err := farm.LoadConfig(Cpath)
+	if err != nil {
+		return err
+	}
+	r, err := farm.OpenRegistry(cfg, ctx, log)
 	if err != nil {
 		return err
 	}
@@ -185,7 +189,7 @@ func registrar() error {
 
 	wks := []*worker{}
 	for _, s := range farm.SOIL_ALL {
-		wks = append(wks, NewWorker(r, s, Cpath, ctx, log))
+		wks = append(wks, NewWorker(r, s, cfg, ctx, log))
 	}
 	defer func() {
 		for _, wk := range wks {
