@@ -111,8 +111,12 @@ func (self *worker) Do() error {
 }
 
 func (self *worker) failedSleep() {
+	cnt := atomic.LoadInt64(&(self.fail_cnt))
+	if cnt <= 10 {
+		return
+	}
+
 	sleep_secs := []int64{
-		10,
 		60,          //1min
 		60 * 5,      //5min
 		60 * 15,     //15min
@@ -120,8 +124,6 @@ func (self *worker) failedSleep() {
 		60 * 60,     //1h
 		60 * 60 * 3, //3h
 	}
-
-	cnt := atomic.LoadInt64(&(self.fail_cnt))
 	for _, sleep_sec := range sleep_secs {
 		if cnt > sleep_sec {
 			continue
