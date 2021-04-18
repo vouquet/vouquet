@@ -101,7 +101,7 @@ func (self *Worker) PostState(state *farm.State) {
 
 		if self.before_state != nil {
 			if self.before_state.Date().Equal(state.Date()) {
-				self.log.WriteErr("%s got same the time in state(%s, %s).",
+				self.log.WriteErr("[%s %s] got same the time in state %s.",
 							self.work.Florist, self.work.Soil, self.work.Seed)
 				return
 			}
@@ -146,7 +146,7 @@ func florister() error {
 	start := now.AddDate(0, 0, -1)
 	workers := []*Worker{}
 	for _, work := range cfg.Works {
-		log.WriteDebug("LoadWorker %s: soil: %s, seed: %s, size: %f", work.Florist, work.Soil, work.Seed, work.Size)
+		log.WriteMsg("LoadWorker %s: soil: %s, seed: %s, size: %f", work.Florist, work.Soil, work.Seed, work.Size)
 		init_status, err := r.GetStatus(work.Soil, work.Seed, start, now)
 		if err != nil {
 			return err
