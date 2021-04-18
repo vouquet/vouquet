@@ -61,7 +61,12 @@ func eval() error {
 
 	log := new(logger)
 	ctx := context.Background()
-	r, err := farm.OpenRegistry(Cpath, ctx, log)
+
+	cfg, err := farm.LoadConfig(Cpath)
+	if err != nil {
+		return err
+	}
+	r, err := farm.OpenRegistry(cfg, ctx, log)
 	if err != nil {
 		return err
 	}

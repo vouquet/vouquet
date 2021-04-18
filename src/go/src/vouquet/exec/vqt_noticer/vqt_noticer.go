@@ -55,7 +55,11 @@ func noticer() error {
 		return err
 	}
 
-	s_recorder, err := farm.OpenShipRecorder(Soil, Seed, Cpath, ctx, log)
+	cfg, err := farm.LoadConfig(Cpath)
+	if err != nil {
+		return err
+	}
+	s_recorder, err := farm.OpenShipRecorder(Soil, Seed, cfg, ctx, log)
 	if err != nil {
 		return err
 	}

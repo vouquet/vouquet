@@ -46,16 +46,12 @@ type Flowerpot struct {
 	mtx     *sync.Mutex
 }
 
-func NewFlowerpot(soil_name string, seed string, c_path string, ctx context.Context, log logger) (*Flowerpot, error) {
+func NewFlowerpot(soil_name string, seed string, c *Config, ctx context.Context, log logger) (*Flowerpot, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	c_ctx, cancel := context.WithCancel(ctx)
 
-	c, err := loadConfig(c_path)
-	if err != nil {
-		return nil, err
-	}
 	s, err := shop.New(soil_name, c, c_ctx)
 	if err != nil {
 		return nil, err

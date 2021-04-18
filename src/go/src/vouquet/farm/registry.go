@@ -43,15 +43,7 @@ type Registry struct {
 	mtx    *sync.Mutex
 }
 
-func OpenRegistry(c_path string, ctx context.Context, log logger) (*Registry, error) {
-	if c_path == "" {
-		return nil, fmt.Errorf("cannot load a config the empty path")
-	}
-	cfg, err := loadConfig(c_path)
-	if err != nil {
-		return nil, err
-	}
-
+func OpenRegistry(cfg *Config, ctx context.Context, log logger) (*Registry, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}

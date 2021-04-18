@@ -15,6 +15,41 @@ Vouquet
 * Vouquet を利用した取引に関しては自己責任です
 	* ライブラリの動作保証も行っておりません
 
+## 対応パラメータ
+
+### Soil(取引所)
+
+| パラメータ | 一般的な名称 |取引所URL | 備考 |
+| :---: | :---: | :---: | :---: |
+| `coinzcom` | GMOコイン | https://coin.z.com/jp/ | |
+| `bitflyer` | Bitflyer | https://bitflyer.com//ja-jp/ | |
+| `coincheck` | Coincheck | https://coincheck.com/ja/ | まだfloristerからの呼び出しに非対応 |
+
+### Seed(通貨名+現物orレバレッジ)
+
+| パラメータ |
+| :---: |
+|`BTC2JPY_spt`|
+|`BTC2JPY_mgn`|
+|`ETH2JPY_spt`|
+|`ETH2JPY_mgn`|
+|`BCH2JPY_spt`|
+|`BCH2JPY_mgn`|
+|`LTC2JPY_spt`|
+|`LTC2JPY_mgn`|
+|`XRP2JPY_spt`|
+|`XRP2JPY_mgn`|
+|`XLM2JPY_spt`|
+|`XLM2JPY_mgn`|
+|`MONA2JPY_spt`|
+|`MONA2JPY_mgn`|
+
+* 現物orレバレッジ
+	* `_spt`
+		* 現物指定
+	* `_mgn`
+		* レバレッジ指定
+
 ### インストール手順
 1. [公開仕様 ##Florist 開発/リリース 方法](./public/README.md#florist-開発リリース-方法) を利用し、floristの開発やbuildを行う
 2. [Vouquetのサーバインストール手順](./ope/install.md)
