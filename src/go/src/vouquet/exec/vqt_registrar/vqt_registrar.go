@@ -6,6 +6,7 @@ import (
 	"flag"
 	"time"
 	"context"
+	"sync/atomic"
 )
 
 import (
@@ -47,7 +48,7 @@ type worker struct {
 	registry    *farm.Registry
 	themograpy  *farm.Themography
 
-	fail_cnt    int
+	fail_cnt    int64
 
 	log         *logger
 	ctx         context.Context
@@ -71,21 +72,21 @@ func NewWorker(r *farm.Registry, soil_name string, c_path string, ctx context.Co
 func (self *worker) Do() error {
 	ok, err := self.mtx.TryLock()
 	if err != nil {
-		self.fail_cnt++
+		atomic.AddInt64(&(self.fail_cnt), 1)
 		if err == lock.ERR_CONTEXT_CANCEL {
 			return nil
 		}
 		return err
 	}
 	if !ok {
-		self.fail_cnt++
+		atomic.AddInt64(&(self.fail_cnt), 1)
 		return nil
 	}
 	defer self.mtx.Unlock()
 
 	if self.themograpy == nil {
 		if err := self.open(); err != nil {
-			self.fail_cnt++
+			atomic.AddInt64(&(self.fail_cnt), 1)
 			self.failedSleep()
 			return err
 		}
@@ -93,14 +94,16 @@ func (self *worker) Do() error {
 
 	ss, err := self.themograpy.Status()
 	if err != nil {
-		self.fail_cnt++
+		atomic.AddInt64(&(self.fail_cnt), 1)
 		self.failedSleep()
 		return err
 	}
 
-	if self.fail_cnt > 0 {
-		self.fail_cnt--
+	cnt := atomic.LoadInt64(&(self.fail_cnt))
+	if cnt > 0 {
+		atomic.AddInt64(&(self.fail_cnt), -1)
 	}
+
 	if err := self.registry.Record(ss); err != nil {
 		return err
 	}
@@ -108,34 +111,29 @@ func (self *worker) Do() error {
 }
 
 func (self *worker) failedSleep() {
-	if self.fail_cnt <= 10 {
+	cnt := atomic.LoadInt64(&(self.fail_cnt))
+	if cnt <= 10 {
 		return
 	}
-	if self.fail_cnt <= 60 {
-		self.sleep(time.Second * 60)
+
+	sleep_secs := []int64{
+		60,          //1min
+		60 * 5,      //5min
+		60 * 15,     //15min
+		60 * 30,     //30min
+		60 * 60,     //1h
+		60 * 60 * 3, //3h
+	}
+	for _, sleep_sec := range sleep_secs {
+		if cnt > sleep_sec {
+			continue
+		}
+
+		self.sleep(time.Second * time.Duration(sleep_sec))
 		return
 	}
-	if self.fail_cnt <= (60 * 5) {
-		self.sleep(time.Second * 60 * 5)
-		return
-	}
-	if self.fail_cnt <= (60 * 15) {
-		self.sleep(time.Second * 60 * 15)
-		return
-	}
-	if self.fail_cnt <= (60 * 30) {
-		self.sleep(time.Second * 60 * 30)
-		return
-	}
-	if self.fail_cnt <= (60 * 60) {
-		self.sleep(time.Second * 60 * 60)
-		return
-	}
-	if self.fail_cnt <= (60 * 60 * 6) {
-		self.sleep(time.Second * 60 * 60 * 6)
-		return
-	}
-	self.sleep(time.Second * 60 * 60 * 12)
+	atomic.StoreInt64(&(self.fail_cnt), 0)
+	return
 }
 
 func (self *worker) sleep(size time.Duration) {
