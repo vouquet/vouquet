@@ -154,6 +154,7 @@ func florister() error {
 
 	log.WriteMsg("Start %s %s", SELF_NAME, Version)
 
+	alrdy := make(map[string]struct{})
 	now := time.Now()
 	start := now.AddDate(0, 0, -1)
 	workers := []*Worker{}
@@ -163,10 +164,19 @@ func florister() error {
 			return err
 		}
 
+		if work.PrdMode {
+			_, ok := alrdy[work.Florist + work.Soil + work.Seed]
+			if ok {
+				return fmt.Errorf("already defined type of prduction worker. %s, %s, %s",
+											work.Florist, work.Soil, work.Seed)
+			}
+		}
 		worker, err := NewWorker(ctx, log, cfg, work, init_status)
 		if err != nil {
 			return err
 		}
+
+		alrdy[work.Florist + work.Soil + work.Seed] = struct{}{}
 		workers = append(workers, worker)
 
 		go func(worker *Worker) {
