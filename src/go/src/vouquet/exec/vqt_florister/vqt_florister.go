@@ -43,6 +43,7 @@ func (self *logger) WriteDebug(s string, msg ...interface{}) {
 
 type Worker struct {
 	fl     *vouquet.Florist
+	pl     farm.Planter
 	st_ch  chan *farm.State
 
 	work   *farm.Work
@@ -82,6 +83,7 @@ func NewWorker(b_ctx context.Context, log *logger, cfg *farm.Config,
 
 	return &Worker{
 		fl: fl,
+		pl: pl,
 		st_ch: make(chan *farm.State),
 		work: wk,
 
@@ -111,6 +113,10 @@ func (self *Worker) PostState(state *farm.State) {
 	go func() {
 		defer self.mtx.Unlock()
 
+		tp, ok := self.pl.(*farm.TestPlanter)
+		if ok {
+			tp.SetState(state)
+		}
 		if self.before_state != nil {
 			if self.before_state.Date().Equal(state.Date()) {
 				self.log.WriteErr("[%s %s] got same the time in state %s.",
