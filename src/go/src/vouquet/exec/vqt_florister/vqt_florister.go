@@ -58,10 +58,22 @@ type Worker struct {
 func NewWorker(b_ctx context.Context, log *logger, cfg *farm.Config,
 						wk *farm.Work, status []*farm.State) (*Worker, error) {
 	ctx, cancel := context.WithCancel(b_ctx)
-	pl, err := farm.NewFlowerpot(wk.Soil, wk.Seed, cfg, ctx, log)
-	if err != nil {
-		return nil, err
+
+	var pl farm.Planter
+	if wk.PrdMode {
+		var err error
+		pl, err = farm.NewFlowerpot(wk.Soil, wk.Seed, cfg, ctx, log)
+		if err != nil {
+			return nil, err
+		}
+		log.WriteMsg("Load **Prd** worker %s, soil: %s, seed: %s, size: %f",
+								wk.Florist, wk.Soil, wk.Seed, wk.Size)
+	} else {
+		pl = farm.NewTestPlanter(wk.Seed, log)
+		log.WriteMsg("Load Demo worker %s, soil: %s, seed: %s, size: %f",
+								wk.Florist, wk.Soil, wk.Seed, wk.Size)
 	}
+
 	fl, err := vouquet.NewFlorist(wk.Florist, pl, status, log)
 	if err != nil {
 		return nil, err
@@ -146,7 +158,6 @@ func florister() error {
 	start := now.AddDate(0, 0, -1)
 	workers := []*Worker{}
 	for _, work := range cfg.Works {
-		log.WriteMsg("LoadWorker %s: soil: %s, seed: %s, size: %f", work.Florist, work.Soil, work.Seed, work.Size)
 		init_status, err := r.GetStatus(work.Soil, work.Seed, start, now)
 		if err != nil {
 			return err
