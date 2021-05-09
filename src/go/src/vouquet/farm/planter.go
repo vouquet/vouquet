@@ -423,6 +423,9 @@ func (self *TestPlanter) SetSeed(o_type string, size float64, opt *OpeOption) er
 	self.lock()
 	defer self.unlock()
 
+	if self.now_state == nil {
+		return fmt.Errorf("not set state.")
+	}
 	if opt == nil {
 		opt = DEFAULT_OpeOption
 	}
