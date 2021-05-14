@@ -423,6 +423,9 @@ func (self *TestPlanter) SetSeed(o_type string, size float64, opt *OpeOption) er
 	self.lock()
 	defer self.unlock()
 
+	if self.now_state == nil {
+		return fmt.Errorf("not set state.")
+	}
 	if opt == nil {
 		opt = DEFAULT_OpeOption
 	}
@@ -437,7 +440,7 @@ func (self *TestPlanter) SetSeed(o_type string, size float64, opt *OpeOption) er
 		pos: tpos,
 	}
 
-	self.log.WriteDebug("[SetSeed] %s, size: %.3f, price: %.3f", o_type, size, price)
+	self.log.WriteMsg("[TEST SetSeed] %s, size: %.3f, price: %.3f", o_type, size, price)
 
 	self.sp_list = append(self.sp_list, sp)
 	return nil
@@ -459,6 +462,8 @@ func (self *TestPlanter) Harvest(sp *Sprout, opt *OpeOption) error {
 
 	if opt == nil {
 		opt = DEFAULT_OpeOption
+	} else {
+		self.log.WriteErr("[TEST Harvest] cannot use option")
 	}
 
 	in_val := sp.Price()
@@ -492,10 +497,9 @@ func (self *TestPlanter) Harvest(sp *Sprout, opt *OpeOption) error {
 	}
 	self.sp_list = sp_list
 
-	t_fmt := "2006/01/02 15:04"
-	self.log.WriteDebug("[Harvested(%s)] orderIn: %f(%s) -> orderOut: %f(%s), win: %f",
-							sp.OrderType(), in_val, sp.CreateTime().Format(t_fmt),
-							out_val, self.now_state.Date().Format(t_fmt),  yield)
+	self.log.WriteMsg("[TEST Harvest] %s, size: %.3f, price: %.3f -> %.3f, win: %.3f(/%.3f)",
+							sp.OrderType(), sp.Size(), sp.Price(), out_val,
+							yield, self.win + self.lose)
 	return nil
 }
 

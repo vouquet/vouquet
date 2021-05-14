@@ -46,4 +46,7 @@ type Work struct {
 	Soil     string  `toml:soil`
 	Seed     string  `toml:seed`
 	Size     float64 `toml:size`
+
+	PrdMode  bool    `toml:prd_mode`
+	//Noticer  string  `toml:noticer`"
 }

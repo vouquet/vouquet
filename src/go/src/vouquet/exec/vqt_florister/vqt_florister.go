@@ -43,6 +43,7 @@ func (self *logger) WriteDebug(s string, msg ...interface{}) {
 
 type Worker struct {
 	fl     *vouquet.Florist
+	pl     farm.Planter
 	st_ch  chan *farm.State
 
 	work   *farm.Work
@@ -58,10 +59,22 @@ type Worker struct {
 func NewWorker(b_ctx context.Context, log *logger, cfg *farm.Config,
 						wk *farm.Work, status []*farm.State) (*Worker, error) {
 	ctx, cancel := context.WithCancel(b_ctx)
-	pl, err := farm.NewFlowerpot(wk.Soil, wk.Seed, cfg, ctx, log)
-	if err != nil {
-		return nil, err
+
+	var pl farm.Planter
+	if wk.PrdMode {
+		var err error
+		pl, err = farm.NewFlowerpot(wk.Soil, wk.Seed, cfg, ctx, log)
+		if err != nil {
+			return nil, err
+		}
+		log.WriteMsg("Load **Prd** worker %s, soil: %s, seed: %s, size: %f",
+								wk.Florist, wk.Soil, wk.Seed, wk.Size)
+	} else {
+		pl = farm.NewTestPlanter(wk.Seed, log)
+		log.WriteMsg("Load Demo worker %s, soil: %s, seed: %s, size: %f",
+								wk.Florist, wk.Soil, wk.Seed, wk.Size)
 	}
+
 	fl, err := vouquet.NewFlorist(wk.Florist, pl, status, log)
 	if err != nil {
 		return nil, err
@@ -70,6 +83,7 @@ func NewWorker(b_ctx context.Context, log *logger, cfg *farm.Config,
 
 	return &Worker{
 		fl: fl,
+		pl: pl,
 		st_ch: make(chan *farm.State),
 		work: wk,
 
@@ -99,6 +113,10 @@ func (self *Worker) PostState(state *farm.State) {
 	go func() {
 		defer self.mtx.Unlock()
 
+		tp, ok := self.pl.(*farm.TestPlanter)
+		if ok {
+			tp.SetState(state)
+		}
 		if self.before_state != nil {
 			if self.before_state.Date().Equal(state.Date()) {
 				self.log.WriteErr("[%s %s] got same the time in state %s.",
@@ -142,20 +160,29 @@ func florister() error {
 
 	log.WriteMsg("Start %s %s", SELF_NAME, Version)
 
+	alrdy := make(map[string]struct{})
 	now := time.Now()
 	start := now.AddDate(0, 0, -1)
 	workers := []*Worker{}
 	for _, work := range cfg.Works {
-		log.WriteMsg("LoadWorker %s: soil: %s, seed: %s, size: %f", work.Florist, work.Soil, work.Seed, work.Size)
 		init_status, err := r.GetStatus(work.Soil, work.Seed, start, now)
 		if err != nil {
 			return err
 		}
 
+		if work.PrdMode {
+			_, ok := alrdy[work.Florist + work.Soil + work.Seed]
+			if ok {
+				return fmt.Errorf("already defined type of prduction worker. %s, %s, %s",
+											work.Florist, work.Soil, work.Seed)
+			}
+		}
 		worker, err := NewWorker(ctx, log, cfg, work, init_status)
 		if err != nil {
 			return err
 		}
+
+		alrdy[work.Florist + work.Soil + work.Seed] = struct{}{}
 		workers = append(workers, worker)
 
 		go func(worker *Worker) {
