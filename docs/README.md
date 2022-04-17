@@ -1,6 +1,8 @@
 Vouquet
 ===
 
+# prj停止中. 連絡あれば、https://github.com/hinoshiba まで
+
 * Vouquet は、仮想通貨を対象とした、自動/半自動取引システムです
 	* [公開仕様](./public/README.md) をご覧いただき、"Florist"を開発することで、Vouquetを利用できます
 * Vouquet (Virtual coin bOUQUET) では、個々の仮想通貨の思想を元に仮想通貨という種子を育て、立派な花束(資産)を作成することをコンセプトとしています
